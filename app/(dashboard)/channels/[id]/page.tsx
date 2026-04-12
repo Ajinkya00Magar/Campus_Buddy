@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import ChannelPageClient from './ChannelPageClient'
 
-export default async function ChannelPage({ params }: { params: { id: string } }) {
+export default async function ChannelPage({ params }: any) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
