@@ -2,19 +2,21 @@
 
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { getInitials, getRoleBadgeColor } from '@/lib/utils'
+import { getInitials, getRoleBadgeColor, cn } from '@/lib/utils'
 import NotificationDropdown from './NotificationDropdown'
+import { useSidebar } from '@/contexts/SidebarContext'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings } from 'lucide-react'
+import { LogOut, User, Settings, Menu } from 'lucide-react'
 import type { User as UserType } from '@/types'
 
 export default function Navbar({ user }: { user: UserType | null }) {
   const router = useRouter()
   const supabase = createClient()
+  const { toggle } = useSidebar()
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -26,6 +28,14 @@ export default function Navbar({ user }: { user: UserType | null }) {
 
   return (
     <header className="h-14 border-b bg-white flex items-center px-6 gap-4 shrink-0 z-10">
+      <button
+        onClick={toggle}
+        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        aria-label="Toggle sidebar"
+      >
+        <Menu className="h-5 w-5 text-gray-700" />
+      </button>
+
       <div className="flex-1" />
 
       <NotificationDropdown userId={user.id} />
@@ -69,8 +79,4 @@ export default function Navbar({ user }: { user: UserType | null }) {
       </DropdownMenu>
     </header>
   )
-}
-
-function cn(...args: (string | boolean | undefined)[]) {
-  return args.filter(Boolean).join(' ')
 }

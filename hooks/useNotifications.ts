@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getNotifications, markAsRead, markAllAsRead } from '@/services/notifications.service'
 import type { Notification } from '@/types'
@@ -9,6 +9,7 @@ export function useNotifications(userId: string | undefined) {
   const supabase = createClient()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const channelRef = useRef<any>(null)
 
   useEffect(() => {
     if (!userId) { setLoading(false); return }
@@ -17,6 +18,11 @@ export function useNotifications(userId: string | undefined) {
       setNotifications(data)
       setLoading(false)
     })
+
+    // Cleanup any existing channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current)
+    }
 
     const channel = supabase
       .channel(`notifs:${userId}`)
@@ -34,8 +40,15 @@ export function useNotifications(userId: string | undefined) {
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
-  }, [userId])
+    channelRef.current = channel
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current)
+        channelRef.current = null
+      }
+    }
+  }, [userId, supabase])
 
   const handleMarkRead = async (id: string) => {
     await markAsRead(id)
