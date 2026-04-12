@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import CourseDetailClient from './CourseDetailClient'
 import type { CourseModule } from '@/types'
 
-export default async function CoursePage({ params }: { params: { id: string } }) {
+export default async function CoursePage({ params }: any) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
