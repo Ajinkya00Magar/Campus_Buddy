@@ -39,10 +39,10 @@ npm install
 ### 3. Set Environment Variables
 
 ```bash
-cp .env.example .env.local
+cp frontend/.env.example frontend/.env.local
 ```
 
-Edit `.env.local`:
+Edit `frontend/.env.local`:
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
@@ -52,7 +52,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ### 4. Run Database Schema
 
-In **Supabase Dashboard → SQL Editor**, paste and run the entire contents of `supabase/schema.sql`.
+In **Supabase Dashboard → SQL Editor**, paste and run the entire contents of `database/schema.sql`.
 
 This creates all tables, RLS policies, indexes, the auto-profile trigger, and seed data.
 
@@ -88,29 +88,27 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ```
 campus-buddy/
-├── app/
-│   ├── (auth)/login/          # Login & signup page
-│   ├── (dashboard)/           # All protected pages
-│   │   ├── dashboard/         # Home dashboard
-│   │   ├── events/            # Events list + detail + create
-│   │   ├── clubs/             # Clubs directory + detail
-│   │   ├── courses/           # Courses + module learning
-│   │   ├── channels/          # Real-time chat
-│   │   ├── notifications/     # All notifications
-│   │   └── admin/             # Admin panel
-│   └── api/auth/callback/     # Auth callback
-├── components/
-│   ├── layout/                # Sidebar, Navbar, NotificationDropdown
-│   └── ui/                    # shadcn-style UI primitives
-├── hooks/                     # useUser, useMessages, useNotifications
-├── lib/
-│   ├── supabase/              # client.ts + server.ts
-│   ├── utils.ts               # helpers
-│   └── validations.ts         # PRN email + form validation
-├── services/                  # Data access layer (all Supabase queries)
-├── types/                     # TypeScript interfaces
-├── supabase/schema.sql        # Full DB schema + seed data
-└── middleware.ts              # Route protection
+├── frontend/                  # Next.js app and UI
+│   ├── app/
+│   │   ├── (auth)/login/      # Login & signup page
+│   │   ├── (dashboard)/       # All protected pages
+│   │   └── api/auth/callback/ # Auth callback
+│   ├── components/            # Layout + shadcn-style UI primitives
+│   ├── contexts/              # Sidebar state provider
+│   ├── hooks/                 # useUser, useMessages, useNotifications
+│   ├── types/                 # TypeScript interfaces
+│   ├── middleware.ts          # Route protection
+│   └── *.config.*             # Next, Tailwind, PostCSS, TypeScript config
+├── backend/                   # Supabase access and app data layer
+│   ├── lib/
+│   │   ├── supabase/          # client.ts + server.ts
+│   │   ├── utils.ts           # helpers
+│   │   └── validations.ts     # PRN email + form validation
+│   └── services/              # Data access layer (Supabase queries)
+├── database/
+│   └── schema.sql             # Full DB schema + seed data
+├── package.json               # Root scripts run the frontend app
+└── package-lock.json
 ```
 
 ---
