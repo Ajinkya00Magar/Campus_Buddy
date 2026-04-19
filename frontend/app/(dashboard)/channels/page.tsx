@@ -5,6 +5,7 @@ import {
   BookOpen,
   Briefcase,
   Hash,
+  Lock,
   Plus,
   Sparkles,
   Trophy,
