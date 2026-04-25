@@ -66,6 +66,18 @@ export function useMessages(channelId: string) {
           )
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `channel_id=eq.${channelId}`,
+        },
+        (payload) => {
+          setMessages((prev) => prev.filter((message) => message.id !== payload.old.id))
+        }
+      )
       .subscribe()
 
     return () => {

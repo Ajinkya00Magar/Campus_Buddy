@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Channel, Message, Poll } from '@/types'
+import type { Channel, ChannelStats, Message, MessageReaction, Poll } from '@/types'
 
 export async function getChannels(): Promise<Channel[]> {
   const supabase = createClient()
@@ -47,6 +47,26 @@ export async function sendMessage(payload: {
     .select('*, users(name, avatar_url, role)')
     .single()
   return { data, error }
+}
+
+export async function updateMessage(messageId: string, content: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('messages')
+    .update({ content, edited_at: new Date().toISOString() })
+    .eq('id', messageId)
+    .select('*, users(name, avatar_url, role)')
+    .single()
+  return { data, error }
+}
+
+export async function deleteMessage(messageId: string) {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('messages')
+    .delete()
+    .eq('id', messageId)
+  return { error }
 }
 
 export async function pinMessage(messageId: string, pin: boolean) {
@@ -130,6 +150,44 @@ export async function getChannelPolls(channelId: string) {
   return data ?? []
 }
 
+export async function getMessageReactions(channelId: string): Promise<MessageReaction[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('message_reactions')
+    .select('*, users(name, avatar_url, role), messages!inner(channel_id)')
+    .eq('messages.channel_id', channelId)
+    .order('created_at', { ascending: true })
+
+  if (error) return []
+  return data ?? []
+}
+
+export async function toggleMessageReaction(messageId: string, userId: string, emoji: string) {
+  const supabase = createClient()
+  const { data: existing } = await supabase
+    .from('message_reactions')
+    .select('id, emoji')
+    .eq('message_id', messageId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (existing?.emoji === emoji) {
+    const { error } = await supabase
+      .from('message_reactions')
+      .delete()
+      .eq('id', existing.id)
+    return { error }
+  }
+
+  const { error } = await supabase
+    .from('message_reactions')
+    .upsert(
+      { message_id: messageId, user_id: userId, emoji },
+      { onConflict: 'message_id,user_id' }
+    )
+  return { error }
+}
+
 export async function voteOnPoll(
   pollId: string,
   userId: string,
@@ -143,4 +201,38 @@ export async function voteOnPoll(
       { onConflict: 'poll_id,user_id' }
     )
   return { error }
+}
+
+export async function getChannelStats(channelId: string): Promise<ChannelStats> {
+  const supabase = createClient()
+  const [{ count: members }, { data: files }, { data: messages }] = await Promise.all([
+    supabase
+      .from('channel_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('channel_id', channelId),
+    supabase
+      .from('messages')
+      .select('file_name, file_url')
+      .eq('channel_id', channelId)
+      .not('file_url', 'is', null),
+    supabase
+      .from('messages')
+      .select('content')
+      .eq('channel_id', channelId)
+      .not('content', 'is', null),
+  ])
+
+  const media = (files ?? []).filter((file) => isMediaFile(file.file_name ?? file.file_url ?? '')).length
+  const docs = (files ?? []).length - media
+  const links = (messages ?? []).reduce((total, message) => total + countLinks(message.content ?? ''), 0)
+
+  return { members: members ?? 0, media, docs, links }
+}
+
+function isMediaFile(value: string) {
+  return /\.(png|jpe?g|gif|webp|svg|bmp|avif|mp4|webm|ogg|mov|m4v|mp3|wav|m4a|aac|flac|oga)(\?.*)?$/i.test(value)
+}
+
+function countLinks(value: string) {
+  return value.match(/https?:\/\/\S+/g)?.length ?? 0
 }

@@ -150,7 +150,17 @@ CREATE TABLE public.messages (
   file_name  TEXT,
   is_pinned  BOOLEAN DEFAULT FALSE,
   reply_to   UUID REFERENCES public.messages(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  edited_at  TIMESTAMPTZ
+);
+
+CREATE TABLE public.message_reactions (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  emoji      TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(message_id, user_id)
 );
 
 -- ============================================================
@@ -215,6 +225,7 @@ ALTER TABLE public.course_completions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.channels           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.channel_members    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.message_reactions  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.polls              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.poll_votes         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications      ENABLE ROW LEVEL SECURITY;
@@ -262,7 +273,14 @@ CREATE POLICY "channel_members_insert" ON public.channel_members FOR INSERT WITH
 -- MESSAGES
 CREATE POLICY "messages_read"   ON public.messages FOR SELECT USING (TRUE);
 CREATE POLICY "messages_insert" ON public.messages FOR INSERT WITH CHECK (auth.uid() = sender_id);
-CREATE POLICY "messages_update" ON public.messages FOR UPDATE USING (EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin','teacher')));
+CREATE POLICY "messages_update" ON public.messages FOR UPDATE USING (auth.uid() = sender_id OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin','teacher')));
+CREATE POLICY "messages_delete" ON public.messages FOR DELETE USING (auth.uid() = sender_id OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin','teacher')));
+
+-- MESSAGE REACTIONS
+CREATE POLICY "reactions_read"   ON public.message_reactions FOR SELECT USING (TRUE);
+CREATE POLICY "reactions_insert" ON public.message_reactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "reactions_update" ON public.message_reactions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "reactions_delete" ON public.message_reactions FOR DELETE USING (auth.uid() = user_id);
 
 -- POLLS & VOTES
 CREATE POLICY "polls_read"   ON public.polls FOR SELECT USING (TRUE);
@@ -270,6 +288,7 @@ CREATE POLICY "polls_insert" ON public.polls FOR INSERT WITH CHECK (auth.uid() =
 
 CREATE POLICY "votes_read"   ON public.poll_votes FOR SELECT USING (TRUE);
 CREATE POLICY "votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "votes_update" ON public.poll_votes FOR UPDATE USING (auth.uid() = user_id);
 
 -- NOTIFICATIONS
 CREATE POLICY "notifs_read"   ON public.notifications FOR SELECT USING (auth.uid() = user_id);
@@ -307,6 +326,7 @@ CREATE TRIGGER on_auth_user_created
 -- ENABLE REALTIME
 -- ============================================================
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.message_reactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.poll_votes;
 

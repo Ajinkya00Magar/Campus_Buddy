@@ -117,6 +117,7 @@ export interface Message {
   is_pinned: boolean
   reply_to?: string
   created_at: string
+  edited_at?: string
   users?: Pick<User, 'name' | 'avatar_url' | 'role'>
 }
 
@@ -129,6 +130,7 @@ export interface Poll {
   created_by: string
   ends_at?: string
   created_at: string
+  poll_votes?: PollVote[]
 }
 
 export interface PollVote {
@@ -137,6 +139,22 @@ export interface PollVote {
   user_id: string
   option_idx: number
   voted_at: string
+}
+
+export interface MessageReaction {
+  id: string
+  message_id: string
+  user_id: string
+  emoji: string
+  created_at: string
+  users?: Pick<User, 'name' | 'avatar_url' | 'role'>
+}
+
+export interface ChannelStats {
+  members: number
+  media: number
+  docs: number
+  links: number
 }
 
 export interface Notification {
