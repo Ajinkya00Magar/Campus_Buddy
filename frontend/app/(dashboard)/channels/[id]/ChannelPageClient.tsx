@@ -46,6 +46,7 @@ import {
   Info,
   Link as LinkIcon,
   Loader2,
+  Menu,
   Mic,
   Music,
   Pin,
@@ -133,6 +134,9 @@ type MessageContextMenuState = {
   isMine: boolean
   isStarred: boolean
 }
+type ChatTimelineItem =
+  | { id: string; kind: 'message'; createdAt: string; message: Message }
+  | { id: string; kind: 'poll'; createdAt: string; poll: Poll }
 
 export default function ChannelPageClient({
   channel,
@@ -154,6 +158,7 @@ export default function ChannelPageClient({
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('all')
   const [showInfo, setShowInfo] = useState(true)
+  const [showChannelMap, setShowChannelMap] = useState(false)
   const [starredIds, setStarredIds] = useState<string[]>([])
   const [reactions, setReactions] = useState<MessageReaction[]>([])
   const [polls, setPolls] = useState<Poll[]>([])
@@ -180,6 +185,27 @@ export default function ChannelPageClient({
   const filteredMessages = useMemo(
     () => filterMessages(messages, activeFilter, searchQuery, starredIds),
     [messages, activeFilter, searchQuery, starredIds]
+  )
+  const filteredPolls = useMemo(
+    () => filterPolls(polls, activeFilter, searchQuery),
+    [polls, activeFilter, searchQuery]
+  )
+  const timelineItems = useMemo<ChatTimelineItem[]>(
+    () => [
+      ...filteredMessages.map((message) => ({
+        id: `message-${message.id}`,
+        kind: 'message' as const,
+        createdAt: message.created_at,
+        message,
+      })),
+      ...filteredPolls.map((poll) => ({
+        id: `poll-${poll.id}`,
+        kind: 'poll' as const,
+        createdAt: poll.created_at,
+        poll,
+      })),
+    ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [filteredMessages, filteredPolls]
   )
   const mediaItems = useMemo(() => messages.filter((message) => {
     if (!message.file_url) return false
@@ -454,7 +480,7 @@ export default function ChannelPageClient({
     }
 
     setCreatingPoll(true)
-    const { error } = await createPoll({
+    const { data, error } = await createPoll({
       channel_id: channel.id,
       question: pollQuestion.trim(),
       options: validOptions,
@@ -470,18 +496,45 @@ export default function ChannelPageClient({
     setShowPollForm(false)
     setPollQuestion('')
     setPollOptions(['', ''])
-    setPolls((await getChannelPolls(channel.id)) as Poll[])
+    if (data) {
+      setPolls((prev) => prev.some((poll) => poll.id === data.id) ? prev : [...prev, { ...data, poll_votes: [] } as Poll])
+    } else {
+      setPolls((await getChannelPolls(channel.id)) as Poll[])
+    }
+    scrollToBottom()
     toast({ title: 'Poll created' })
   }
 
   return (
     <div className="relative flex h-full -m-6 overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_30%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--muted)))]">
-      <aside className="hidden w-72 shrink-0 border-r bg-card/80 backdrop-blur-xl md:flex md:flex-col">
+      {showChannelMap && (
+        <button
+          aria-label="Close curriculum map"
+          className="absolute inset-0 z-20 bg-black/30 backdrop-blur-[1px] md:hidden"
+          onClick={() => setShowChannelMap(false)}
+        />
+      )}
+      <aside
+        aria-hidden={!showChannelMap}
+        className={cn(
+          'absolute inset-y-0 left-0 z-30 flex w-72 shrink-0 flex-col border-r bg-card/95 shadow-2xl backdrop-blur-xl transition-transform md:relative md:z-auto md:bg-card/80 md:shadow-none md:transition-none',
+          showChannelMap ? 'translate-x-0 md:flex' : 'pointer-events-none -translate-x-full md:hidden'
+        )}
+      >
         <div className="border-b p-4">
-          <Link href="/channels" className="group inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground hover:text-primary">
-            <ArrowRight className="h-3.5 w-3.5 rotate-180 transition group-hover:-translate-x-0.5" />
-            Curriculum map
-          </Link>
+          <div className="flex items-center justify-between gap-3">
+            <Link href="/channels" className="group inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground hover:text-primary">
+              <ArrowRight className="h-3.5 w-3.5 rotate-180 transition group-hover:-translate-x-0.5" />
+              Curriculum map
+            </Link>
+            <button
+              onClick={() => setShowChannelMap(false)}
+              className="interactive-control flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="Hide curriculum map"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
           <div className="mt-4 rounded-2xl border bg-background/70 p-3">
             <div className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-lg', meta.tone)}>
               {meta.icon}
@@ -523,6 +576,13 @@ export default function ChannelPageClient({
           <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-primary/10 to-transparent" />
           <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowChannelMap((value) => !value)}
+                className="interactive-control flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background/75 text-muted-foreground hover:bg-accent hover:text-foreground"
+                title={showChannelMap ? 'Hide curriculum map' : 'Show curriculum map'}
+              >
+                <Menu className="h-4 w-4" />
+              </button>
               <div className={cn('flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-primary/20', meta.tone)}>
                 <Hash className="h-5 w-5" />
               </div>
@@ -651,7 +711,7 @@ export default function ChannelPageClient({
                   active={activeFilter}
                   onChange={setActiveFilter}
                   counts={{
-                    all: messages.length,
+                    all: messages.length + polls.length,
                     media: mediaItems.length,
                     docs: docItems.length,
                     links: linkItems.length,
@@ -661,26 +721,16 @@ export default function ChannelPageClient({
               </div>
             </div>
 
-            {polls.length > 0 && (
-              <div className="border-b bg-background/65 px-4 py-3 md:px-7">
-                <div className="mx-auto grid max-w-5xl gap-3 lg:grid-cols-2">
-                  {polls.slice(0, 2).map((poll) => (
-                    <PollCard key={poll.id} poll={poll} currentUserId={currentUser?.id ?? ''} onVote={handleVote} />
-                  ))}
-                </div>
-              </div>
-            )}
-
             <div className="relative flex-1 overflow-y-auto px-4 py-5 md:px-7">
               {loading ? (
                 <MessageSkeleton />
-              ) : messages.length === 0 ? (
+              ) : messages.length === 0 && polls.length === 0 ? (
                 <EmptyState channelName={channel.name} />
-              ) : filteredMessages.length === 0 ? (
+              ) : timelineItems.length === 0 ? (
                 <NoResults query={searchQuery} filter={activeFilter} />
               ) : (
                 <MessageList
-                  messages={filteredMessages}
+                  items={timelineItems}
                   messageById={messageById}
                   currentUserId={currentUser?.id ?? ''}
                   canPin={canPin}
@@ -691,6 +741,7 @@ export default function ChannelPageClient({
                   onCopy={handleCopy}
                   onStar={handleStar}
                   onReact={handleReaction}
+                  onVote={handleVote}
                   reactionGroups={reactionGroups}
                   starredIds={starredIds}
                 />
@@ -924,7 +975,7 @@ function EmojiPaletteMenu({ onSelect }: { onSelect: (emoji: string) => void }) {
 }
 
 function MessageList({
-  messages,
+  items,
   messageById,
   currentUserId,
   canPin,
@@ -935,10 +986,11 @@ function MessageList({
   onCopy,
   onStar,
   onReact,
+  onVote,
   reactionGroups,
   starredIds,
 }: {
-  messages: Message[]
+  items: ChatTimelineItem[]
   messageById: Map<string, Message>
   currentUserId: string
   canPin: boolean
@@ -949,6 +1001,7 @@ function MessageList({
   onCopy: (message: Message) => void
   onStar: (messageId: string) => void
   onReact: (messageId: string, emoji: string) => void
+  onVote: (pollId: string, optionIdx: number) => void
   reactionGroups: Map<string, ReactionSummary[]>
   starredIds: string[]
 }) {
@@ -969,9 +1022,23 @@ function MessageList({
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-4">
-      {messages.map((msg, index) => {
+      {items.map((item, index) => {
+        if (item.kind === 'poll') {
+          return (
+            <PollTimelineItem
+              key={item.id}
+              poll={item.poll}
+              currentUserId={currentUserId}
+              onVote={onVote}
+            />
+          )
+        }
+
+        const msg = item.message
         const isMine = msg.sender_id === currentUserId
-        const showAvatar = index === 0 || messages[index - 1]?.sender_id !== msg.sender_id
+        const previousItem = items[index - 1]
+        const previousMessage = previousItem?.kind === 'message' ? previousItem.message : null
+        const showAvatar = !previousMessage || previousMessage.sender_id !== msg.sender_id
         const user = msg.users
         const isPending = msg.id.startsWith('pending-')
         const reply = msg.reply_to ? messageById.get(msg.reply_to) : null
@@ -1335,6 +1402,34 @@ function ChatFilters({
   )
 }
 
+function PollTimelineItem({
+  poll,
+  currentUserId,
+  onVote,
+}: {
+  poll: Poll
+  currentUserId: string
+  onVote: (pollId: string, optionIdx: number) => void
+}) {
+  return (
+    <div className="flex justify-start gap-3 animate-message-in">
+      <div className="w-10 shrink-0">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary/10 text-primary shadow-md">
+          <BarChart2 className="h-4 w-4" />
+        </div>
+      </div>
+
+      <div className="max-w-[min(720px,82%)]">
+        <div className="mb-1.5 flex items-center gap-2">
+          <span className="text-xs font-bold text-foreground">Poll</span>
+          <span className="text-[11px] text-muted-foreground">{timeAgo(poll.created_at)}</span>
+        </div>
+        <PollCard poll={poll} currentUserId={currentUserId} onVote={onVote} />
+      </div>
+    </div>
+  )
+}
+
 function PollCard({
   poll,
   currentUserId,
@@ -1350,10 +1445,10 @@ function PollCard({
 
   return (
     <div className="rounded-2xl border bg-card p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex items-start gap-2">
         <BarChart2 className="h-4 w-4 text-primary" />
-        <p className="min-w-0 flex-1 truncate text-sm font-bold text-foreground">{poll.question}</p>
-        <span className="text-[11px] font-semibold text-muted-foreground">{votes.length} votes</span>
+        <p className="min-w-0 flex-1 break-words text-sm font-bold text-foreground">{poll.question}</p>
+        <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{votes.length} votes</span>
       </div>
       <div className="space-y-2">
         {poll.options.map((option, index) => {
@@ -1686,6 +1781,17 @@ function filterMessages(
     if (filter === 'links') return extractLinks(message.content ?? '').length > 0
     if (filter === 'starred') return starredIds.includes(message.id)
     return true
+  })
+}
+
+function filterPolls(polls: Poll[], filter: ChatFilter, query: string) {
+  if (filter !== 'all') return []
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return polls
+
+  return polls.filter((poll) => {
+    const searchable = [poll.question, ...poll.options].join(' ').toLowerCase()
+    return searchable.includes(normalizedQuery)
   })
 }
 
