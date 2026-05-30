@@ -8,16 +8,18 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Users2, BookOpen,
   Hash, Bell, Settings, GraduationCap, Shield, ChevronLeft, ChevronRight,
-  Lock, ChevronDown
+  Lock, ChevronDown, FileText, Archive
 } from 'lucide-react'
 import type { UserRole, Channel } from '@/types'
 
 const navItems = [
   { href: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/channels',      label: 'Channels',      icon: Hash, isChannelParent: true },
   { href: '/events',        label: 'Events',        icon: Calendar },
   { href: '/clubs',         label: 'Clubs',         icon: Users2 },
   { href: '/courses',       label: 'Courses',       icon: BookOpen },
-  { href: '/channels',      label: 'Channels',      icon: Hash, isChannelParent: true },
+  { href: 'https://mitaoe-pyqs.vercel.app/', label: 'PYQs', icon: Archive, external: true },
+  { href: 'https://mitaoe-notes.vercel.app/', label: 'Notes', icon: FileText, external: true },
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ]
 const adminItems = [{ href: '/admin', label: 'Admin Panel', icon: Shield }]
@@ -110,7 +112,7 @@ function SidebarInner({
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-3 custom-scrollbar">
         {items.map((item) => {
-          const { href, label, icon: Icon, isChannelParent } = item
+          const { href, label, icon: Icon, isChannelParent, external } = item
           const isActive = pathname === href || (href.length > 1 && pathname.startsWith(href))
           const isChannelsOpen = isChannelParent && channelsExpanded && isOpen
           
@@ -119,11 +121,17 @@ function SidebarInner({
               <div className="relative group/tip">
                 <Link
                   href={href}
-                  onClick={() => {
+                  target={external ? "_blank" : undefined}
+                  rel={external ? "noopener noreferrer" : undefined}
+                  onClick={(e) => {
                     if (isChannelParent) {
                       setChannelsExpanded(!channelsExpanded)
+                      if (pathname.startsWith('/channels')) {
+                        e.preventDefault()
+                        return // Do not close the mobile sidebar if we're just toggling the menu
+                      }
                     }
-                    onNavClick()
+                    if (!external) onNavClick()
                   }}
                   className={cn(
                     'interactive-control flex items-center text-sm font-medium transition-colors',
