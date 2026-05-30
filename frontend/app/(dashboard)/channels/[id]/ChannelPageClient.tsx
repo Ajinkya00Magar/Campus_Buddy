@@ -45,6 +45,7 @@ import {
   Info,
   Link as LinkIcon,
   Loader2,
+  Lock,
   Menu,
   Mic,
   Music,
