@@ -29,7 +29,6 @@ import {
   CalendarDays,
   Camera,
   Check,
-  CheckCheck,
   ChevronDown,
   Contact,
   Copy,
@@ -58,7 +57,6 @@ import {
   Send,
   Share2,
   SmilePlus,
-  Sparkles,
   SquareCheck,
   Star,
   Trophy,
@@ -157,8 +155,7 @@ export default function ChannelPageClient({
   const [editing, setEditing] = useState<Message | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<ChatFilter>('all')
-  const [showInfo, setShowInfo] = useState(true)
-  const [showChannelMap, setShowChannelMap] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
   const [starredIds, setStarredIds] = useState<string[]>([])
   const [reactions, setReactions] = useState<MessageReaction[]>([])
   const [polls, setPolls] = useState<Poll[]>([])
@@ -177,9 +174,8 @@ export default function ChannelPageClient({
   const audioChunksRef = useRef<Blob[]>([])
 
   const pinned = messages.find((m) => m.is_pinned)
-  const canPin = currentUser?.role === 'admin' || currentUser?.role === 'teacher'
+  const canPin = currentUser?.role === 'admin' || currentUser?.role === 'professor' || currentUser?.role === 'cr'
   const meta = typeMeta[channel.type]
-  const navGroups = useMemo(() => groupChannels(allChannels), [allChannels])
   const reactionGroups = useMemo(() => groupReactions(reactions, currentUser?.id), [reactions, currentUser?.id])
   const messageById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages])
   const filteredMessages = useMemo(
@@ -401,6 +397,19 @@ export default function ChannelPageClient({
     setReactions(await getMessageReactions(channel.id))
   }
 
+  const jumpToMessage = (messageId: string) => {
+    const el = document.getElementById(`message-${messageId}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Brief highlight effect
+      const bubble = el.querySelector('.group\\/message')
+      if (bubble) {
+        bubble.classList.add('ring-2', 'ring-primary', 'ring-offset-2')
+        setTimeout(() => bubble.classList.remove('ring-2', 'ring-primary', 'ring-offset-2'), 2000)
+      }
+    }
+  }
+
   const handleVote = async (pollId: string, optionIdx: number) => {
     if (!currentUser) return
     const { error } = await voteOnPoll(pollId, currentUser.id, optionIdx)
@@ -506,149 +515,77 @@ export default function ChannelPageClient({
   }
 
   return (
-    <div className="relative flex h-full -m-6 overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_30%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--muted)))]">
-      {showChannelMap && (
-        <button
-          aria-label="Close curriculum map"
-          className="absolute inset-0 z-20 bg-black/30 backdrop-blur-[1px] md:hidden"
-          onClick={() => setShowChannelMap(false)}
-        />
-      )}
-      <aside
-        aria-hidden={!showChannelMap}
-        className={cn(
-          'absolute inset-y-0 left-0 z-30 flex w-72 shrink-0 flex-col border-r bg-card/95 shadow-2xl backdrop-blur-xl transition-transform md:relative md:z-auto md:bg-card/80 md:shadow-none md:transition-none',
-          showChannelMap ? 'translate-x-0 md:flex' : 'pointer-events-none -translate-x-full md:hidden'
-        )}
-      >
-        <div className="border-b p-4">
-          <div className="flex items-center justify-between gap-3">
-            <Link href="/channels" className="group inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground hover:text-primary">
-              <ArrowRight className="h-3.5 w-3.5 rotate-180 transition group-hover:-translate-x-0.5" />
-              Curriculum map
-            </Link>
-            <button
-              onClick={() => setShowChannelMap(false)}
-              className="interactive-control flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="Hide curriculum map"
-            >
-              <X className="h-4 w-4" />
-            </button>
+    <div className="chat-workspace relative flex h-full w-full flex-col overflow-hidden bg-background">
+      <header className="flex h-14 shrink-0 items-center border-b bg-card px-4 shadow-sm z-30">
+        <div className="flex flex-1 items-center gap-3 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+            <Hash className="h-5 w-5" />
           </div>
-          <div className="mt-4 rounded-2xl border bg-background/70 p-3">
-            <div className={cn('mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-lg', meta.tone)}>
-              {meta.icon}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-sm font-bold text-foreground">#{channel.name}</h1>
+              {channel.is_private && <Lock className="h-3 w-3 text-muted-foreground shrink-0" />}
+              <div className="hidden sm:flex items-center gap-1.5 ml-1">
+                <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">Live</span>
+              </div>
             </div>
-            <p className="truncate text-sm font-extrabold text-foreground">#{channel.name}</p>
-            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{channel.description || meta.label}</p>
+            <p className="hidden md:block truncate text-[11px] text-muted-foreground leading-none mt-0.5">
+              {channel.description || 'Channel discussion and resources.'}
+            </p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
-          {navGroups.years.map(({ year, channels }) => (
-            <div key={year}>
-              <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
-                {yearLabels[year] ?? `Year ${year}`}
-              </p>
-              <div className="space-y-1">
-                {channels.map((item) => (
-                  <ChannelNavItem key={item.id} channel={item} active={item.id === channel.id} />
-                ))}
-              </div>
-            </div>
-          ))}
-
-          {navGroups.other.length > 0 && (
-            <div>
-              <p className="mb-2 px-2 text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Campus</p>
-              <div className="space-y-1">
-                {navGroups.other.map((item) => (
-                  <ChannelNavItem key={item.id} channel={item} active={item.id === channel.id} />
-                ))}
-              </div>
-            </div>
-          )}
-        </nav>
-      </aside>
-
-      <section className="flex min-w-0 flex-1 flex-col">
-        <header className="relative overflow-hidden border-b bg-card/90 px-5 py-4 shadow-sm backdrop-blur-xl">
-          <div className="absolute inset-y-0 right-0 w-1/3 bg-gradient-to-l from-primary/10 to-transparent" />
-          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowChannelMap((value) => !value)}
-                className="interactive-control flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-background/75 text-muted-foreground hover:bg-accent hover:text-foreground"
-                title={showChannelMap ? 'Hide curriculum map' : 'Show curriculum map'}
-              >
-                <Menu className="h-4 w-4" />
-              </button>
-              <div className={cn('flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br text-white shadow-lg shadow-primary/20', meta.tone)}>
-                <Hash className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-lg font-extrabold tracking-tight text-foreground">#{channel.name}</h1>
-                  <span className="inline-flex items-center gap-1 rounded-full border bg-background/70 px-2.5 py-1 text-[11px] font-bold text-muted-foreground">
-                    {meta.icon}
-                    {meta.label}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {channel.description || 'Live discussion, shared notes, pinned updates, and files.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <div className="hidden items-center gap-2 rounded-xl border bg-background/75 px-3 py-2 shadow-sm lg:flex">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search"
-                  className="w-36 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-              {channel.year && (
-                <span className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
-                  {yearLabels[channel.year] ?? `Year ${channel.year}`}
-                </span>
-              )}
-              <span className="rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600">
-                Live
-              </span>
-              <button
-                onClick={() => setShowInfo((value) => !value)}
-                className="interactive-control flex h-10 w-10 items-center justify-center rounded-xl border bg-background/75 text-muted-foreground hover:bg-accent hover:text-foreground"
-                title="Channel info"
-              >
-                <Info className="h-4 w-4" />
-              </button>
-            </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden h-8 items-center gap-2 rounded-md bg-muted/50 px-2.5 lg:flex border">
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search history..."
+              className="w-32 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground focus:w-48 transition-all"
+            />
           </div>
-        </header>
+          <button
+            onClick={() => setShowInfo((value) => !value)}
+            className={cn(
+              "interactive-control flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+              showInfo && "bg-accent text-foreground border-primary/20"
+            )}
+            title="Channel details"
+          >
+            <Info className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
 
         {pinned && (
-          <div className="flex items-center gap-3 border-b border-amber-200 bg-amber-50/90 px-5 py-3 text-amber-900 shadow-sm dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-200/70 text-amber-700 dark:bg-amber-900/60 dark:text-amber-200">
+          <button
+            onClick={() => jumpToMessage(pinned.id)}
+            className="flex shrink-0 w-full items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-left text-amber-900 transition hover:bg-amber-100 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200 z-20"
+          >
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center border border-amber-300 bg-amber-100 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
               <Pin className="h-4 w-4" />
             </div>
-            <p className="min-w-0 flex-1 truncate text-sm font-semibold">
-              {pinned.content ?? pinned.file_name}
-            </p>
-          </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Pinned Message</p>
+              <p className="truncate text-sm font-medium">
+                {pinned.content ?? pinned.file_name}
+              </p>
+            </div>
+            <ArrowRight className="h-4 w-4 shrink-0 opacity-40 group-hover:translate-x-0.5 transition" />
+          </button>
         )}
 
         {showPollForm && (
-          <div className="border-b bg-primary/5 px-5 py-4 animate-fade-up">
-            <div className="rounded-2xl border bg-card p-4 shadow-lg shadow-primary/5">
+          <div className="animate-fade-up border-b bg-muted/30 px-4 py-3 shrink-0 z-20">
+            <div className="border bg-card p-3">
               <div className="mb-3 flex items-center justify-between">
-                <p className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <BarChart2 className="h-4 w-4 text-primary" />
                   Create quick poll
                 </p>
-                <button onClick={() => setShowPollForm(false)} className="interactive-control h-8 w-8 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground">
+                <button onClick={() => setShowPollForm(false)} className="interactive-control h-7 w-7 text-muted-foreground hover:bg-accent hover:text-foreground">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -694,34 +631,36 @@ export default function ChannelPageClient({
           </div>
         )}
 
-        <div className="flex min-h-0 flex-1">
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="border-b bg-card/60 px-4 py-3 md:px-7">
-              <div className="mx-auto flex max-w-5xl flex-col gap-3">
-                <div className="flex items-center gap-2 rounded-xl border bg-background/75 px-3 py-2 shadow-sm lg:hidden">
-                  <Search className="h-4 w-4 text-muted-foreground" />
-                  <input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search messages"
-                    className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+        <div className="flex min-h-0 flex-1 overflow-hidden relative">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden relative bg-background">
+            {showInfo && (
+              <div className="border-b bg-card px-4 py-2 animate-in fade-in slide-in-from-top-1 duration-200 shrink-0 z-10">
+                <div className="flex flex-col gap-2">
+                  <div className="flex h-8 items-center gap-2 border bg-background px-2.5 lg:hidden">
+                    <Search className="h-4 w-4 text-muted-foreground" />
+                    <input
+                      value={searchQuery}
+                      onChange={(event) => setSearchQuery(event.target.value)}
+                      placeholder="Search messages"
+                      className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                    />
+                  </div>
+                  <ChatFilters
+                    active={activeFilter}
+                    onChange={setActiveFilter}
+                    counts={{
+                      all: messages.length + polls.length,
+                      media: mediaItems.length,
+                      docs: docItems.length,
+                      links: linkItems.length,
+                      starred: starredIds.length,
+                    }}
                   />
                 </div>
-                <ChatFilters
-                  active={activeFilter}
-                  onChange={setActiveFilter}
-                  counts={{
-                    all: messages.length + polls.length,
-                    media: mediaItems.length,
-                    docs: docItems.length,
-                    links: linkItems.length,
-                    starred: starredIds.length,
-                  }}
-                />
               </div>
-            </div>
+            )}
 
-            <div className="relative flex-1 overflow-y-auto px-4 py-5 md:px-7">
+            <div className="relative flex-1 overflow-y-auto px-4 py-4 custom-scrollbar bg-background/50 min-h-0">
               {loading ? (
                 <MessageSkeleton />
               ) : messages.length === 0 && polls.length === 0 ? (
@@ -733,6 +672,7 @@ export default function ChannelPageClient({
                   items={timelineItems}
                   messageById={messageById}
                   currentUserId={currentUser?.id ?? ''}
+                  currentUserRole={currentUser?.role ?? 'student'}
                   canPin={canPin}
                   onPin={handlePin}
                   onReply={handleReply}
@@ -742,6 +682,7 @@ export default function ChannelPageClient({
                   onStar={handleStar}
                   onReact={handleReaction}
                   onVote={handleVote}
+                  onJump={jumpToMessage}
                   reactionGroups={reactionGroups}
                   starredIds={starredIds}
                 />
@@ -749,21 +690,21 @@ export default function ChannelPageClient({
               <div ref={bottomRef} />
             </div>
 
-            <footer className="border-t bg-card/92 px-4 py-4 shadow-[0_-18px_50px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+            <footer className="border-t bg-card px-4 py-3 shrink-0 z-30 relative">
               {(sending || uploading || recording) && (
-                <div className="mb-3 flex items-center gap-2 rounded-xl border bg-primary/5 px-3 py-2 text-xs font-semibold text-primary animate-fade-up">
+                <div className="animate-fade-up mb-2 flex items-center gap-2 border bg-primary/5 px-2.5 py-1.5 text-xs font-medium text-primary">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   {recording ? 'Recording voice note' : uploading ? `Uploading ${uploadName}` : editing ? 'Saving edit' : 'Sending message'}
                 </div>
               )}
 
               {(replyTo || editing) && (
-                <div className="mx-auto mb-3 flex max-w-5xl items-center gap-3 rounded-2xl border bg-background/90 p-3 shadow-sm animate-fade-up">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <div className="animate-fade-up mb-2 flex items-center gap-2 border bg-background p-2">
+                  <div className="flex h-8 w-8 items-center justify-center border bg-primary/10 text-primary">
                     {editing ? <Edit3 className="h-4 w-4" /> : <Reply className="h-4 w-4" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-foreground">{editing ? 'Edit message' : `Replying to ${replyTo?.users?.name ?? 'message'}`}</p>
+                    <p className="text-xs font-semibold text-foreground">{editing ? 'Edit message' : `Replying to ${replyTo?.users?.name ?? 'message'}`}</p>
                     <p className="truncate text-xs text-muted-foreground">{editing?.content ?? replyTo?.content ?? replyTo?.file_name ?? 'Shared file'}</p>
                   </div>
                   <button
@@ -772,7 +713,7 @@ export default function ChannelPageClient({
                       setEditing(null)
                       setText('')
                     }}
-                    className="interactive-control flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+                    className="interactive-control flex h-7 w-7 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
                     title="Cancel"
                   >
                     <X className="h-4 w-4" />
@@ -780,7 +721,7 @@ export default function ChannelPageClient({
                 </div>
               )}
 
-              <div className="mx-auto flex max-w-5xl items-end gap-2 rounded-2xl border bg-background/85 p-2 shadow-lg shadow-primary/5 focus-within:border-primary/40 focus-within:ring-4 focus-within:ring-primary/10">
+              <div className="flex items-end gap-1.5 border bg-background p-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/20">
                 <input ref={documentRef} type="file" className="hidden" onChange={handleFile} />
                 <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFile} />
                 <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
@@ -799,7 +740,7 @@ export default function ChannelPageClient({
                 <EmojiPaletteMenu onSelect={handleEmojiInsert} />
                 <textarea
                   ref={messageInputRef}
-                  className="min-h-[42px] flex-1 resize-none bg-transparent px-3 py-2 text-sm leading-relaxed outline-none placeholder:text-muted-foreground"
+                  className="min-h-[36px] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
                   placeholder={editing ? 'Edit message' : `Message #${channel.name}`}
                   value={text}
                   onChange={(event) => setText(event.target.value)}
@@ -816,7 +757,7 @@ export default function ChannelPageClient({
                     onClick={handleVoiceNote}
                     disabled={uploading || sending}
                     className={cn(
-                      'interactive-control flex h-10 w-10 items-center justify-center rounded-xl transition disabled:cursor-not-allowed disabled:opacity-50',
+                      'interactive-control flex h-9 w-9 items-center justify-center transition disabled:cursor-not-allowed disabled:opacity-50',
                       recording ? 'bg-red-500 text-white focus-pulse' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                     )}
                     title={recording ? 'Stop recording' : 'Voice note'}
@@ -826,7 +767,7 @@ export default function ChannelPageClient({
                   <button
                     onClick={handleSend}
                     disabled={sending || !text.trim()}
-                    className="interactive-control flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+                    className="interactive-control flex h-9 w-9 items-center justify-center border border-primary bg-primary text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
                     title={editing ? 'Save edit' : 'Send'}
                   >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? <Check className="h-4 w-4" /> : <Send className="h-4 w-4" />}
@@ -848,7 +789,6 @@ export default function ChannelPageClient({
             />
           )}
         </div>
-      </section>
     </div>
   )
 }
@@ -859,14 +799,14 @@ function ChannelNavItem({ channel, active }: { channel: Channel; active: boolean
     <Link
       href={`/channels/${channel.id}`}
       className={cn(
-        'group flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition duration-200',
+        'group flex items-center gap-2 px-2 py-1.5 text-sm transition-colors',
         active
-          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+          ? 'bg-primary text-primary-foreground'
           : 'text-muted-foreground hover:bg-accent hover:text-foreground'
       )}
     >
       <span className={cn(
-        'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg',
+        'flex h-6 w-6 shrink-0 items-center justify-center border',
         active ? 'bg-white/18 text-white' : 'bg-primary/10 text-primary'
       )}>
         <Hash className="h-3.5 w-3.5" />
@@ -914,18 +854,18 @@ function PlusAttachmentMenu({
       <DropdownMenuTrigger asChild>
         <button
           disabled={disabled}
-          className="interactive-control flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-foreground shadow-sm hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="interactive-control flex h-9 w-9 shrink-0 items-center justify-center border bg-muted text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           title="Add attachment"
         >
-          <Plus className="h-6 w-6" />
+          <Plus className="h-5 w-5" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top" sideOffset={12} className="w-56 rounded-3xl border bg-popover p-2 shadow-2xl">
+      <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-56 border bg-popover p-1 shadow-sm">
         {items.map((item) => (
           <DropdownMenuItem
             key={item.label}
             onClick={item.action}
-            className="gap-3 rounded-2xl px-3 py-3 text-sm font-bold"
+            className="gap-3 px-3 py-2 text-sm font-medium"
           >
             <span className={item.tone}>{item.icon}</span>
             {item.label}
@@ -941,17 +881,17 @@ function EmojiPaletteMenu({ onSelect }: { onSelect: (emoji: string) => void }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="interactive-control hidden h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground sm:flex"
+          className="interactive-control hidden h-9 w-9 shrink-0 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground sm:flex"
           title="Choose emoji"
         >
           <SmilePlus className="h-4 w-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" side="top" sideOffset={12} className="w-80 rounded-3xl border bg-popover p-3 shadow-2xl">
+      <DropdownMenuContent align="start" side="top" sideOffset={8} className="w-80 border bg-popover p-2 shadow-sm">
         <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
           {emojiPalette.map((group) => (
             <section key={group.label}>
-              <p className="mb-2 px-1 text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="mb-2 px-1 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
                 {group.label}
               </p>
               <div className="grid grid-cols-8 gap-1">
@@ -959,7 +899,7 @@ function EmojiPaletteMenu({ onSelect }: { onSelect: (emoji: string) => void }) {
                   <button
                     key={`${group.label}-${emoji}`}
                     onClick={() => onSelect(emoji)}
-                    className="interactive-control flex h-9 w-9 items-center justify-center rounded-xl text-xl hover:bg-accent"
+                    className="interactive-control flex h-8 w-8 items-center justify-center text-lg hover:bg-accent"
                     title={emoji}
                   >
                     {emoji}
@@ -978,6 +918,7 @@ function MessageList({
   items,
   messageById,
   currentUserId,
+  currentUserRole,
   canPin,
   onPin,
   onReply,
@@ -987,12 +928,14 @@ function MessageList({
   onStar,
   onReact,
   onVote,
+  onJump,
   reactionGroups,
   starredIds,
 }: {
   items: ChatTimelineItem[]
   messageById: Map<string, Message>
   currentUserId: string
+  currentUserRole: string
   canPin: boolean
   onPin: (id: string, current: boolean) => void
   onReply: (message: Message) => void
@@ -1002,6 +945,7 @@ function MessageList({
   onStar: (messageId: string) => void
   onReact: (messageId: string, emoji: string) => void
   onVote: (pollId: string, optionIdx: number) => void
+  onJump: (id: string) => void
   reactionGroups: Map<string, ReactionSummary[]>
   starredIds: string[]
 }) {
@@ -1021,7 +965,7 @@ function MessageList({
   }, [contextMenu])
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+    <div className="chat-timeline flex flex-col gap-2 w-full">
       {items.map((item, index) => {
         if (item.kind === 'poll') {
           return (
@@ -1048,17 +992,16 @@ function MessageList({
         return (
           <div
             key={msg.id}
-            className={cn(
-              'flex gap-3 animate-message-in',
-              isMine ? 'justify-end' : 'justify-start'
-            )}
+            id={`message-${msg.id}`}
+            className="chat-message-row flex w-full gap-3 py-1 animate-message-in"
           >
+            {/* Avatar on Left (for others) */}
             {!isMine && (
-              <div className="w-10 shrink-0">
+              <div className="w-8 shrink-0">
                 {showAvatar && (
-                  <Avatar className="h-10 w-10 border-2 border-background shadow-md">
+                  <Avatar className="h-8 w-8 border border-background shadow-sm">
                     <AvatarImage src={user?.avatar_url} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                    <AvatarFallback className="bg-primary text-[10px] font-bold text-primary-foreground">
                       {getInitials(user?.name ?? '?')}
                     </AvatarFallback>
                   </Avatar>
@@ -1066,67 +1009,99 @@ function MessageList({
               </div>
             )}
 
-            <div className={cn('max-w-[min(720px,82%)]', isMine && 'items-end')}>
-              {showAvatar && (
-                <div className={cn('mb-1.5 flex items-center gap-2', isMine && 'justify-end')}>
-                  <span className="text-xs font-bold text-foreground">{user?.name ?? 'You'}</span>
-                  <span className={cn('rounded-full border px-1.5 py-0.5 text-[10px] font-semibold', getRoleBadgeColor(user?.role ?? 'student'))}>
-                    {user?.role ?? 'student'}
-                  </span>
-                  <span className="text-[11px] text-muted-foreground">{isPending ? 'Sending' : timeAgo(msg.created_at)}</span>
-                  {msg.edited_at && <span className="text-[11px] text-muted-foreground">edited</span>}
-                  {isStarred && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
-                  {msg.is_pinned && <Pin className="h-3.5 w-3.5 text-amber-500" />}
-                </div>
-              )}
-
+            {/* Message Bubble Container */}
+            <div className={cn(
+              "relative max-w-[min(680px,78%)] flex flex-col",
+              isMine ? "ml-auto items-end" : "items-start"
+            )}>
               <div
                 onContextMenu={(event) => {
                   event.preventDefault()
                   if (isPending) return
+                  const bubbleRect = event.currentTarget.getBoundingClientRect()
                   setContextMenu({
-                    x: Math.max(8, Math.min(event.clientX, window.innerWidth - 260)),
-                    y: Math.max(8, Math.min(event.clientY, window.innerHeight - 440)),
+                    x: Math.max(8, Math.min(bubbleRect.right - 224, window.innerWidth - 260)),
+                    y: Math.max(8, Math.min(bubbleRect.top + 20, window.innerHeight - 440)),
                     message: msg,
                     isMine,
                     isStarred,
                   })
                 }}
                 className={cn(
-                  'group/message relative overflow-hidden rounded-2xl border px-4 py-3 shadow-sm',
+                  'group/message relative overflow-hidden px-3 pb-1.5 pt-2 shadow-sm border transition-all duration-200',
                   isMine
-                    ? 'rounded-br-md border-primary/20 bg-primary text-primary-foreground shadow-primary/10'
-                    : 'rounded-bl-md bg-card',
+                    ? 'rounded-l-xl rounded-tr-none bg-primary text-primary-foreground border-primary/20'
+                    : 'rounded-r-xl rounded-tl-none bg-card text-foreground border-border',
                   isPending && 'opacity-75'
                 )}
               >
-                {reply && (
-                  <div className={cn('mb-2 rounded-xl border-l-4 px-3 py-2 text-xs', isMine ? 'border-white/45 bg-white/10 text-white/85' : 'border-primary/50 bg-primary/5 text-muted-foreground')}>
-                    <p className={cn('font-bold', isMine ? 'text-white' : 'text-foreground')}>{reply.users?.name ?? 'Message'}</p>
-                    <p className="line-clamp-2">{reply.content ?? reply.file_name ?? 'Shared file'}</p>
+                {showAvatar && !isMine && (
+                  <div className="mb-0.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pr-6">
+                    <span className="text-[11px] font-bold text-emerald-500 overflow-hidden text-ellipsis whitespace-nowrap">~ {user?.name ?? 'Someone'}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter">
+                      {user?.role === 'admin' ? 'ADMIN' : user?.role === 'professor' ? 'PROF' : user?.role === 'cr' ? 'CR' : ''} 
+                    </span>
                   </div>
                 )}
 
+                {reply && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onJump(reply.id)
+                    }}
+                    className={cn(
+                      "mb-1.5 block w-full text-left border-l-2 px-2 py-1 text-[11px] rounded-r-md transition",
+                      isMine 
+                        ? "border-primary-foreground/30 bg-black/10 hover:bg-black/20" 
+                        : "border-emerald-500 bg-muted/50 hover:bg-muted"
+                    )}
+                  >
+                    <p className={cn("font-bold truncate", isMine ? "text-primary-foreground/90" : "text-emerald-500")}>
+                      {reply.users?.name ?? 'Message'}
+                    </p>
+                    <p className="line-clamp-1 opacity-70 italic">{reply.content ?? reply.file_name ?? 'Shared file'}</p>
+                  </button>
+                )}
+
                 {msg.content && (
-                  <p className={cn('whitespace-pre-wrap break-words text-sm leading-relaxed', isMine ? 'text-primary-foreground' : 'text-foreground')}>
+                  <p className="whitespace-pre-wrap break-words text-[14px] leading-relaxed pr-8 font-medium">
                     {msg.content}
                   </p>
                 )}
 
                 {msg.file_url && (
-                  <FilePreview
-                    url={msg.file_url}
-                    fileName={msg.file_name ?? 'Shared file'}
-                    isMine={isMine}
-                  />
-                )}
-
-                {isPending && (
-                  <div className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold opacity-80">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Delivering
+                  <div className="mt-1.5 mb-1.5">
+                    <FilePreview
+                      url={msg.file_url}
+                      fileName={msg.file_name ?? 'Shared file'}
+                      isMine={isMine}
+                    />
                   </div>
                 )}
+
+                <div className={cn(
+                  "mt-1 flex items-center gap-1.5 -mr-1",
+                  isMine ? "justify-start flex-row-reverse" : "justify-end"
+                )}>
+                  <div className="flex items-center gap-1">
+                    {isStarred && <Star className={cn("h-3 w-3 fill-amber-400 text-amber-400")} />}
+                    {msg.is_pinned && <Pin className={cn("h-2.5 w-2.5", isMine ? "text-primary-foreground/70" : "text-amber-500")} />}
+                  </div>
+                  
+                  {isPending ? (
+                    <div className="flex items-center gap-1 text-[9px] font-bold opacity-60">
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      {msg.edited_at && <span className="text-[9px] italic opacity-50">edited</span>}
+                      <span className="text-[9px] font-bold opacity-60">
+                        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
+                      </span>
+                    </div>
+                  )}
+                </div>
 
                 {!isPending && (
                   <button
@@ -1135,47 +1110,58 @@ function MessageList({
                       const rect = event.currentTarget.getBoundingClientRect()
                       setContextMenu({
                         x: Math.max(8, Math.min(rect.right - 224, window.innerWidth - 260)),
-                        y: Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - 440)),
+                        y: Math.max(8, Math.min(rect.top + 20, window.innerHeight - 440)),
                         message: msg,
                         isMine,
                         isStarred,
                       })
                     }}
                     className={cn(
-                      'interactive-control absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full opacity-0 shadow-sm transition group-hover/message:opacity-100',
-                      isMine ? 'bg-white/12 text-white/85 hover:bg-white/25 hover:text-white' : 'bg-background/85 text-muted-foreground hover:bg-accent hover:text-foreground'
+                      "absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full opacity-0 shadow-sm border backdrop-blur-sm transition-opacity hover:text-foreground group-hover/message:opacity-100 focus:opacity-100",
+                      isMine ? "bg-primary/20 text-primary-foreground border-white/10" : "bg-card/95 text-muted-foreground hover:bg-accent"
                     )}
                     title="Message actions"
                   >
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <ChevronDown className="h-4 w-4" />
                   </button>
                 )}
               </div>
 
               {groups.length > 0 && (
-                <div className={cn('mt-1 flex flex-wrap gap-1.5', isMine && 'justify-end')}>
+                <div className={cn("mt-1 flex flex-wrap gap-1", isMine && "flex-row-reverse")}>
                   {groups.map((group) => (
                     <button
                       key={group.emoji}
                       onClick={() => onReact(msg.id, group.emoji)}
                       className={cn(
-                        'interactive-control rounded-full border bg-card px-2 py-1 text-xs font-semibold shadow-sm hover:bg-accent',
-                        group.reactedByMe && 'border-primary/50 bg-primary/10 text-primary'
+                        'interactive-control border px-2 py-0.5 text-xs font-bold hover:bg-accent rounded-full transition-all shadow-xs flex items-center gap-1',
+                        isMine ? 'bg-primary/5 border-primary/20' : 'bg-card border-border',
+                        group.reactedByMe && 'border-primary/50 bg-primary/10 text-primary ring-1 ring-primary/20'
                       )}
                       title={group.names.join(', ')}
                     >
-                      {group.emoji} {group.count}
+                      <span>{group.emoji}</span>
+                      <span className="text-[10px]">{group.count}</span>
                     </button>
                   ))}
                 </div>
               )}
 
-              {isMine && !isPending && (
-                <div className="mt-1 flex justify-end text-primary">
-                  <CheckCheck className="h-3.5 w-3.5" />
-                </div>
-              )}
             </div>
+
+            {/* Avatar on Right (for me) */}
+            {isMine && (
+              <div className="w-8 shrink-0">
+                {showAvatar && (
+                  <Avatar className="h-8 w-8 border border-background shadow-sm">
+                    <AvatarImage src={user?.avatar_url} />
+                    <AvatarFallback className="bg-primary text-[10px] font-bold text-primary-foreground">
+                      {getInitials(user?.name ?? '?')}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+            )}
           </div>
         )
       })}
@@ -1183,6 +1169,7 @@ function MessageList({
         <MessageContextMenu
           state={contextMenu}
           canPin={canPin}
+          currentUserRole={currentUserRole}
           onClose={() => setContextMenu(null)}
           onPin={onPin}
           onReply={onReply}
@@ -1200,6 +1187,7 @@ function MessageList({
 function MessageContextMenu({
   state,
   canPin,
+  currentUserRole,
   onClose,
   onPin,
   onReply,
@@ -1211,6 +1199,7 @@ function MessageContextMenu({
 }: {
   state: MessageContextMenuState
   canPin: boolean
+  currentUserRole: string
   onClose: () => void
   onPin: (id: string, current: boolean) => void
   onReply: (message: Message) => void
@@ -1221,6 +1210,7 @@ function MessageContextMenu({
   onReact: (messageId: string, emoji: string) => void
 }) {
   const { message, isMine, isStarred } = state
+  const canManage = isMine || ['admin', 'professor', 'cr'].includes(currentUserRole)
   const menuRef = useRef<HTMLDivElement>(null)
   const reactionBarRef = useRef<HTMLDivElement>(null)
   const actionPanelRef = useRef<HTMLDivElement>(null)
@@ -1303,8 +1293,8 @@ function MessageContextMenu({
     { label: 'Select', icon: <SquareCheck className="h-4 w-4" />, action: () => onStar(message.id), show: true, divider: true },
     { label: 'Save as', icon: <Save className="h-4 w-4" />, action: saveAs, show: Boolean(message.file_url) },
     { label: 'Share', icon: <Share2 className="h-4 w-4" />, action: share, show: true },
-    { label: 'Edit', icon: <Edit3 className="h-4 w-4" />, action: () => onEdit(message), show: isMine && Boolean(message.content), divider: true },
-    { label: 'Delete', icon: <Trash2 className="h-4 w-4" />, action: () => onDelete(message), show: isMine },
+    { label: 'Edit', icon: <Edit3 className="h-4 w-4" />, action: () => onEdit(message), show: canManage && Boolean(message.content), divider: true },
+    { label: 'Delete', icon: <Trash2 className="h-4 w-4" />, action: () => onDelete(message), show: canManage },
   ]
 
   const menu = (
@@ -1315,12 +1305,12 @@ function MessageContextMenu({
       onClick={(event) => event.stopPropagation()}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <div ref={reactionBarRef} className="mb-1 flex max-w-full items-center gap-1 overflow-x-auto rounded-full border bg-popover/98 p-1 shadow-2xl backdrop-blur-xl">
+      <div ref={reactionBarRef} className="mb-1 flex max-w-full items-center gap-1 overflow-x-auto border bg-popover p-1 shadow-sm">
         {quickReactions.map((emoji) => (
           <button
             key={emoji}
             onClick={() => run(() => onReact(message.id, emoji))}
-            className="interactive-control flex h-9 w-9 items-center justify-center rounded-full text-xl hover:bg-accent"
+            className="interactive-control flex h-8 w-8 items-center justify-center text-lg hover:bg-accent"
             title={`React ${emoji}`}
           >
             {emoji}
@@ -1328,7 +1318,7 @@ function MessageContextMenu({
         ))}
         <button
           onClick={() => run(() => onStar(message.id))}
-          className="interactive-control flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="interactive-control flex h-8 w-8 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground"
           title="More"
         >
           <Plus className="h-5 w-5" />
@@ -1336,7 +1326,7 @@ function MessageContextMenu({
       </div>
       <div
         ref={actionPanelRef}
-        className="w-full overflow-y-auto rounded-3xl border bg-popover/98 p-2 text-popover-foreground shadow-2xl backdrop-blur-xl"
+        className="w-full overflow-y-auto border bg-popover p-1.5 text-popover-foreground shadow-sm"
         style={{ maxHeight: layout.actionMaxHeight }}
       >
         {menuItems.filter((item) => item.show).map((item) => (
@@ -1345,7 +1335,7 @@ function MessageContextMenu({
             <button
               onClick={() => run(item.action)}
               className={cn(
-                'interactive-control flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-bold hover:bg-accent',
+                'interactive-control flex w-full items-center gap-3 px-3 py-2 text-left text-sm font-medium hover:bg-accent',
                 item.label === 'Delete' && 'text-destructive hover:text-destructive'
               )}
             >
@@ -1379,21 +1369,21 @@ function ChatFilters({
   ]
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex gap-1.5 overflow-x-auto pb-0.5">
       {filters.map((filter) => (
         <button
           key={filter.value}
           onClick={() => onChange(filter.value)}
           className={cn(
-            'interactive-control flex h-9 shrink-0 items-center gap-2 rounded-xl border px-3 text-xs font-bold',
+            'interactive-control flex h-8 shrink-0 items-center gap-1.5 border px-2.5 text-xs font-medium',
             active === filter.value
-              ? 'border-primary/40 bg-primary text-primary-foreground shadow-lg shadow-primary/15'
+              ? 'border-primary bg-primary text-primary-foreground'
               : 'bg-background/80 text-muted-foreground hover:bg-accent hover:text-foreground'
           )}
         >
           {filter.icon}
           {filter.label}
-          <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', active === filter.value ? 'bg-white/18' : 'bg-muted')}>
+          <span className={cn('px-1 py-0.5 text-[10px]', active === filter.value ? 'bg-white/18' : 'bg-muted')}>
             {counts[filter.value]}
           </span>
         </button>
@@ -1412,16 +1402,16 @@ function PollTimelineItem({
   onVote: (pollId: string, optionIdx: number) => void
 }) {
   return (
-    <div className="flex justify-start gap-3 animate-message-in">
-      <div className="w-10 shrink-0">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary/10 text-primary shadow-md">
+    <div className="animate-message-in flex justify-start gap-2 py-0.5">
+      <div className="w-8 shrink-0">
+        <div className="flex h-8 w-8 items-center justify-center border bg-primary/10 text-primary">
           <BarChart2 className="h-4 w-4" />
         </div>
       </div>
 
-      <div className="max-w-[min(720px,82%)]">
-        <div className="mb-1.5 flex items-center gap-2">
-          <span className="text-xs font-bold text-foreground">Poll</span>
+      <div className="max-w-[min(680px,78%)]">
+        <div className="mb-0.5 flex items-center gap-2">
+          <span className="text-xs font-semibold text-foreground">Poll</span>
           <span className="text-[11px] text-muted-foreground">{timeAgo(poll.created_at)}</span>
         </div>
         <PollCard poll={poll} currentUserId={currentUserId} onVote={onVote} />
@@ -1444,13 +1434,13 @@ function PollCard({
   const selected = votes.find((vote) => vote.user_id === currentUserId)?.option_idx
 
   return (
-    <div className="rounded-2xl border bg-card p-4 shadow-sm">
-      <div className="mb-3 flex items-start gap-2">
+    <div className="border bg-card p-3">
+      <div className="mb-2 flex items-start gap-2">
         <BarChart2 className="h-4 w-4 text-primary" />
-        <p className="min-w-0 flex-1 break-words text-sm font-bold text-foreground">{poll.question}</p>
-        <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">{votes.length} votes</span>
+        <p className="min-w-0 flex-1 break-words text-sm font-semibold text-foreground">{poll.question}</p>
+        <span className="shrink-0 text-[11px] font-medium text-muted-foreground">{votes.length} votes</span>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {poll.options.map((option, index) => {
           const count = votes.filter((vote) => vote.option_idx === index).length
           const percent = Math.round((count / totalVotes) * 100)
@@ -1459,14 +1449,14 @@ function PollCard({
               key={`${poll.id}-${index}`}
               onClick={() => onVote(poll.id, index)}
               className={cn(
-                'interactive-control relative w-full overflow-hidden rounded-xl border px-3 py-2 text-left text-sm transition hover:border-primary/35',
+                'interactive-control relative w-full overflow-hidden border px-3 py-1.5 text-left text-sm transition hover:border-primary/35',
                 selected === index ? 'border-primary/45 bg-primary/10' : 'bg-background'
               )}
             >
               <span className="absolute inset-y-0 left-0 bg-primary/15" style={{ width: `${percent}%` }} />
               <span className="relative flex items-center justify-between gap-3">
-                <span className="font-semibold text-foreground">{option}</span>
-                <span className="text-xs font-bold text-muted-foreground">{percent}%</span>
+                <span className="font-medium text-foreground">{option}</span>
+                <span className="text-xs font-medium text-muted-foreground">{percent}%</span>
               </span>
             </button>
           )
@@ -1494,16 +1484,16 @@ function ChannelInfoPanel({
   onClose: () => void
 }) {
   return (
-    <aside className="hidden w-80 shrink-0 border-l bg-card/88 backdrop-blur-xl xl:flex xl:flex-col">
-      <div className="border-b p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-sm font-extrabold text-foreground">Channel info</p>
-          <button onClick={onClose} className="interactive-control flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground" title="Close info">
+    <aside className="hidden w-72 shrink-0 border-l bg-card xl:flex xl:flex-col">
+      <div className="border-b p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-semibold text-foreground">Channel info</p>
+          <button onClick={onClose} className="interactive-control flex h-7 w-7 items-center justify-center text-muted-foreground hover:bg-accent hover:text-foreground" title="Close info">
             <X className="h-4 w-4" />
           </button>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+          <div className="flex h-10 w-10 items-center justify-center border bg-primary text-primary-foreground">
             <Hash className="h-5 w-5" />
           </div>
           <div className="min-w-0">
@@ -1513,19 +1503,19 @@ function ChannelInfoPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 border-b p-4">
+      <div className="grid grid-cols-2 gap-2 border-b p-3">
         <InfoMetric label="Members" value={stats.members} />
         <InfoMetric label="Starred" value={starredCount} />
         <InfoMetric label="Media" value={stats.media} />
         <InfoMetric label="Docs" value={stats.docs} />
       </div>
 
-      <div className="flex-1 space-y-5 overflow-y-auto p-4">
+      <div className="flex-1 space-y-4 overflow-y-auto p-3">
         <InfoSection title="Media" empty="No media yet">
           {mediaItems.length > 0 ? (
             <div className="grid grid-cols-3 gap-2">
               {mediaItems.slice(0, 9).map((message) => (
-                <a key={message.id} href={message.file_url} target="_blank" rel="noreferrer" className="aspect-square overflow-hidden rounded-xl border bg-background">
+                <a key={message.id} href={message.file_url} target="_blank" rel="noreferrer" className="aspect-square overflow-hidden border bg-background">
                   {getFileKind(message.file_name ?? '', message.file_url ?? '') === 'image' ? (
                     <img src={message.file_url} alt={message.file_name ?? 'Media'} className="h-full w-full object-cover" />
                   ) : (
@@ -1543,7 +1533,7 @@ function ChannelInfoPanel({
           {docItems.length > 0 ? (
             <div className="space-y-2">
               {docItems.slice(0, 5).map((message) => (
-                <a key={message.id} href={message.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl border bg-background p-2 hover:bg-accent">
+                <a key={message.id} href={message.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-2 border bg-background p-2 hover:bg-accent">
                   <FileText className="h-4 w-4 text-primary" />
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold">{message.file_name ?? 'Document'}</span>
                 </a>
@@ -1556,7 +1546,7 @@ function ChannelInfoPanel({
           {linkItems.length > 0 ? (
             <div className="space-y-2">
               {linkItems.slice(0, 5).map((item) => (
-                <a key={`${item.message.id}-${item.url}`} href={item.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl border bg-background p-2 hover:bg-accent">
+                <a key={`${item.message.id}-${item.url}`} href={item.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 border bg-background p-2 hover:bg-accent">
                   <LinkIcon className="h-4 w-4 text-primary" />
                   <span className="min-w-0 flex-1 truncate text-xs font-semibold">{item.url}</span>
                 </a>
@@ -1571,9 +1561,9 @@ function ChannelInfoPanel({
 
 function InfoMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border bg-background/75 p-3">
-      <p className="text-lg font-extrabold text-foreground">{value}</p>
-      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+    <div className="border bg-background p-2.5">
+      <p className="text-lg font-semibold text-foreground">{value}</p>
+      <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
     </div>
   )
 }
@@ -1581,8 +1571,8 @@ function InfoMetric({ label, value }: { label: string; value: number }) {
 function InfoSection({ title, empty, children }: { title: string; empty: string; children: ReactNode }) {
   return (
     <section>
-      <h3 className="mb-2 text-xs font-extrabold uppercase tracking-[0.16em] text-muted-foreground">{title}</h3>
-      {children ?? <p className="rounded-xl border bg-background/70 p-3 text-xs text-muted-foreground">{empty}</p>}
+      <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">{title}</h3>
+      {children ?? <p className="border bg-background p-3 text-xs text-muted-foreground">{empty}</p>}
     </section>
   )
 }
@@ -1592,7 +1582,7 @@ function NoResults({ query, filter }: { query: string; filter: ChatFilter }) {
     <div className="flex h-full min-h-[320px] items-center justify-center text-center">
       <div>
         <Search className="mx-auto h-8 w-8 text-muted-foreground" />
-        <h2 className="mt-3 text-lg font-extrabold text-foreground">Nothing found</h2>
+        <h2 className="mt-3 text-lg font-semibold text-foreground">Nothing found</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           {query ? `No messages match "${query}".` : `No ${filter} messages yet.`}
         </p>
@@ -1613,12 +1603,12 @@ function FilePreview({
   const kind = getFileKind(fileName, url)
 
   return (
-    <div className={cn('mt-2 overflow-hidden rounded-2xl border', isMine ? 'border-white/20 bg-white/10' : 'bg-background')}>
-      <div className="flex items-center gap-2 border-b px-3 py-2">
+    <div className={cn('mt-2 overflow-hidden border', isMine ? 'border-white/20 bg-white/10' : 'bg-background')}>
+      <div className="flex items-center gap-2 border-b px-2 py-1.5">
         <FileKindIcon kind={kind} />
         <div className="min-w-0 flex-1">
-          <p className={cn('truncate text-xs font-bold', isMine ? 'text-white' : 'text-foreground')}>{fileName}</p>
-          <p className={cn('text-[10px] font-semibold uppercase tracking-[0.16em]', isMine ? 'text-white/65' : 'text-muted-foreground')}>
+          <p className={cn('truncate text-xs font-semibold', isMine ? 'text-white' : 'text-foreground')}>{fileName}</p>
+          <p className={cn('text-[10px] font-medium uppercase tracking-[0.12em]', isMine ? 'text-white/65' : 'text-muted-foreground')}>
             {previewLabel(fileName)}
           </p>
         </div>
@@ -1626,7 +1616,7 @@ function FilePreview({
           href={url}
           target="_blank"
           rel="noreferrer"
-          className={cn('interactive-control flex h-8 w-8 items-center justify-center rounded-lg', isMine ? 'text-white hover:bg-white/15' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}
+          className={cn('interactive-control flex h-7 w-7 items-center justify-center', isMine ? 'text-white hover:bg-white/15' : 'text-muted-foreground hover:bg-accent hover:text-foreground')}
           title="Open file"
         >
           <Download className="h-4 w-4" />
@@ -1674,9 +1664,9 @@ function FilePreview({
           href={url}
           target="_blank"
           rel="noreferrer"
-          className={cn('flex items-center gap-3 p-4 transition', isMine ? 'hover:bg-white/10' : 'hover:bg-accent')}
+          className={cn('flex items-center gap-3 p-3 transition', isMine ? 'hover:bg-white/10' : 'hover:bg-accent')}
         >
-          <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl', isMine ? 'bg-white/15 text-white' : 'bg-primary/10 text-primary')}>
+          <div className={cn('flex h-10 w-10 items-center justify-center border', isMine ? 'bg-white/15 text-white' : 'bg-primary/10 text-primary')}>
             <FileText className="h-6 w-6" />
           </div>
           <div>
@@ -1700,11 +1690,11 @@ function FileKindIcon({ kind }: { kind: FileKind }) {
 
 function MessageSkeleton() {
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-2">
       {Array.from({ length: 6 }, (_, index) => (
         <div key={index} className={cn('flex gap-3', index % 2 ? 'justify-end' : 'justify-start')}>
           {index % 2 === 0 && <div className="h-10 w-10 rounded-full bg-muted shimmer" />}
-          <div className="w-[min(620px,78%)] rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="w-[min(620px,78%)] border bg-card p-3">
             <div className="h-3 w-28 rounded-full bg-muted shimmer" />
             <div className="mt-3 h-3 w-full rounded-full bg-muted shimmer" />
             <div className="mt-2 h-3 w-2/3 rounded-full bg-muted shimmer" />
@@ -1719,33 +1709,16 @@ function EmptyState({ channelName }: { channelName: string }) {
   return (
     <div className="flex h-full min-h-[420px] items-center justify-center text-center">
       <div className="max-w-sm">
-        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-[1.5rem] bg-primary/10 text-primary shadow-lg shadow-primary/10">
-          <Sparkles className="h-9 w-9" />
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center border bg-primary/10 text-primary">
+          <Hash className="h-7 w-7" />
         </div>
-        <h2 className="text-2xl font-extrabold text-foreground">Start #{channelName}</h2>
+        <h2 className="text-xl font-semibold text-foreground">Start #{channelName}</h2>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
           Share a note, upload a file, or pin an important update. File previews will appear right inside the conversation.
         </p>
       </div>
     </div>
   )
-}
-
-function groupChannels(channels: Channel[]) {
-  const years = [1, 2, 3, 4]
-    .map((year) => ({
-      year,
-      channels: channels
-        .filter((channel) => (channel.type === 'academic' || channel.type === 'subject') && channel.year === year)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    }))
-    .filter((group) => group.channels.length > 0)
-
-  const other = channels
-    .filter((channel) => channel.type === 'official' || channel.type === 'club' || !channel.year)
-    .sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name))
-
-  return { years, other }
 }
 
 type FileKind = 'image' | 'pdf' | 'video' | 'audio' | 'office' | 'document'

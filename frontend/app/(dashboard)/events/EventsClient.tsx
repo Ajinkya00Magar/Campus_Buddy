@@ -54,7 +54,7 @@ export default function EventsClient({
             <h1 className="text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">Events</h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">{events.length} events on campus, organized for quick discovery.</p>
           </div>
-          {(userRole === 'admin' || userRole === 'teacher') && (
+          {(userRole === 'admin' || userRole === 'professor' || userRole === 'cr') && (
             <Link href="/events/create">
               <Button className="gap-2">
                 <Plus className="h-4 w-4" /> Create Event

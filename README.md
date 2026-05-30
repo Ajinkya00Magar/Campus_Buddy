@@ -10,7 +10,7 @@ Built with: **Next.js 15 · TypeScript · Tailwind CSS · Supabase**
 
 | Module | Features |
 |--------|----------|
-| **Auth** | PRN email validation (`123456789012@mitaoe.ac.in`), role-based (student/teacher/admin) |
+| **Auth** | PRN email validation (`123456789012@mitaoe.ac.in`), role-based (student/professor/cr/admin) |
 | **Dashboard** | Personalized greeting, quick stats, upcoming events, recent courses |
 | **Events** | Browse/filter events, RSVP (going/maybe/not going), event detail with attendee list |
 | **Clubs** | Club directory, join/leave, achievements, member list |
@@ -139,5 +139,5 @@ Update Supabase Auth URLs to your Vercel domain after deploy.
 
 After running the schema, sign up with any valid PRN email:
 - `100000000001@mitaoe.ac.in` — student
-- `200000000001@mitaoe.ac.in` — teacher  
+- `200000000001@mitaoe.ac.in` — professor  
 - `300000000001@mitaoe.ac.in` — admin

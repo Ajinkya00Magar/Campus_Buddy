@@ -1,8 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, Users2, BookOpen, Hash, TrendingUp, ArrowRight, Clock, Sparkles, Trophy } from 'lucide-react'
+import { 
+  Calendar, Users2, BookOpen, Hash, TrendingUp, ArrowRight, Clock, 
+  Trophy, MessageSquare, Star, Sparkles, LayoutGrid, Bell
+} from 'lucide-react'
 import Link from 'next/link'
-import type { ElementType } from 'react'
+import { cn } from '@/lib/utils'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -15,198 +18,199 @@ export default async function DashboardPage() {
     { count: eventsCount },
     { count: clubsCount },
     { count: coursesCount },
-    { count: channelsCount },
     { data: upcomingEvents },
     { data: recentCourses },
+    { data: allChannels },
     { data: completions },
   ] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true }).eq('is_published', true),
     supabase.from('clubs').select('*', { count: 'exact', head: true }),
     supabase.from('courses').select('*', { count: 'exact', head: true }).eq('is_published', true),
-    supabase.from('channels').select('*', { count: 'exact', head: true }),
     supabase.from('events')
       .select('id,title,event_date,category,location')
       .eq('is_published', true)
       .gte('event_date', new Date().toISOString())
       .order('event_date', { ascending: true })
-      .limit(4),
+      .limit(3),
     supabase.from('courses')
-      .select('id,title,level,tags')
+      .select('id,title,level')
       .eq('is_published', true)
       .order('created_at', { ascending: false })
-      .limit(3),
+      .limit(4),
+    supabase.from('channels')
+      .select('*')
+      .order('type', { ascending: false })
+      .limit(100),
     supabase.from('course_completions').select('course_id').eq('user_id', user.id),
   ])
 
   const completedIds = new Set((completions ?? []).map((c: any) => c.course_id))
+  
+  const yourChannels = (allChannels ?? [])
+    .filter(ch => {
+      if (['admin', 'professor', 'cr'].includes(profile?.role ?? '')) return true
+      const matchesYear = !ch.year || ch.year === profile?.year
+      const matchesDept = !ch.department || ch.department === profile?.department
+      return matchesYear && matchesDept && !ch.is_private
+    })
+    .sort((a, b) => (a.type === 'official' ? -1 : 1))
+    .slice(0, 4)
 
-  const quickCards = [
-    { title: 'Events',   count: eventsCount ?? 0,   icon: Calendar, href: '/events',   color: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/20',    border: 'border-blue-100 dark:border-blue-800/30' },
-    { title: 'Clubs',    count: clubsCount ?? 0,    icon: Users2,   href: '/clubs',    color: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/20', border: 'border-violet-100 dark:border-violet-800/30' },
-    { title: 'Courses',  count: coursesCount ?? 0,  icon: BookOpen, href: '/courses',  color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', border: 'border-emerald-100 dark:border-emerald-800/30' },
-    { title: 'Channels', count: channelsCount ?? 0, icon: Hash,     href: '/channels', color: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/20',   border: 'border-amber-100 dark:border-amber-800/30' },
+  const stats = [
+    { label: 'Events', value: eventsCount ?? 0, icon: Calendar, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+    { label: 'Clubs', value: clubsCount ?? 0, icon: Users2, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+    { label: 'Courses', value: coursesCount ?? 0, icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
+    { label: 'Channels', value: (allChannels ?? []).length, icon: Hash, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
   ]
 
-  const catColors: Record<string, string> = {
-    technical: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-    cultural:  'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300',
-    sports:    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
-    academic:  'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-    placement: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-    general:   'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300',
-  }
-
   return (
-    <div className="mx-auto max-w-7xl space-y-7">
-      {/* Greeting */}
-      <section className="relative overflow-hidden rounded-[1.75rem] border border-white/60 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.25),transparent_34%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(239,246,255,0.74))] p-6 shadow-[0_24px_80px_rgba(30,58,138,0.14)] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.2),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(17,24,39,0.86))] md:p-8">
-        <div className="absolute -right-16 -top-20 h-56 w-56 rounded-full border border-primary/20 bg-primary/10 blur-sm" />
-        <div className="absolute bottom-[-7rem] right-1/4 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Campus command center
-            </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
-          Good {getGreeting()}, {profile?.name?.split(' ')[0]} 👋
-        </h1>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base">
-              Your events, clubs, courses, and conversations are ready. Everything happening on campus today, polished into one live workspace.
-            </p>
+    <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fade-in">
+      {/* ── Normal Sized Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 rounded-2xl border bg-card p-6 shadow-sm relative overflow-hidden">
+        <div className="absolute right-0 top-0 h-full w-32 bg-primary/5 -skew-x-12 translate-x-10" />
+        <div className="relative">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            Hello, {profile?.name?.split(' ')[0]}! <span className="animate-bounce">👋</span>
+          </h1>
+          <p className="text-sm text-muted-foreground font-medium mt-1">
+            Welcome to your MITAOE campus dashboard. Here's your overview for today.
+          </p>
+        </div>
+        <div className="relative flex gap-3">
+          <div className="rounded-xl bg-muted/50 px-4 py-2 border border-border">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground/80 tracking-wider">Year</p>
+            <p className="text-base font-black text-foreground">{profile?.year ?? '—'}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:flex">
-            <HeroMetric label="Courses Done" value={String(completions?.length ?? 0)} icon={Trophy} />
-            <HeroMetric label="Live Areas" value="4" icon={Hash} />
+          <div className="rounded-xl bg-muted/50 px-4 py-2 border border-border">
+            <p className="text-[10px] font-bold uppercase text-muted-foreground/80 tracking-wider">PRN</p>
+            <p className="text-base font-mono font-bold text-foreground">{profile?.email?.split('@')[0]}</p>
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* Quick stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger">
-        {quickCards.map(({ title, count, icon: Icon, href, color, bg, border }) => (
-          <Link key={title} href={href}>
-            <Card className={`hover:shadow-md transition-all duration-200 cursor-pointer border ${border} group`}>
-              <CardContent className="pt-5 pb-4">
-                <div className={`inline-flex p-2.5 rounded-2xl ${bg} mb-3 shadow-sm group-hover:scale-105 transition-transform duration-200`}>
-                  <Icon className={`h-5 w-5 ${color}`} />
-                </div>
-                <p className="text-3xl font-extrabold text-foreground">{count}</p>
-                <div className="flex items-center justify-between mt-0.5">
-                  <p className="text-sm text-muted-foreground">{title}</p>
-                  <ArrowRight className={`h-3.5 w-3.5 ${color} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+      {/* ── Standard Mini Stats ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:shadow-md hover:border-primary/20">
+            <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl shrink-0 shadow-sm", s.bg)}>
+              <s.icon className={cn("h-6 w-6", s.color)} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide leading-none">{s.label}</p>
+              <p className="text-2xl font-black text-foreground mt-1.5">{s.value}</p>
+            </div>
+          </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Upcoming Events */}
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" /> Upcoming Events
-            </CardTitle>
-            <Link href="/events" className="text-xs text-primary hover:underline flex items-center gap-1">
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {!upcomingEvents?.length ? (
-              <div className="text-center py-10">
-                <Calendar className="h-10 w-10 text-muted-foreground/20 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No upcoming events</p>
-              </div>
-            ) : upcomingEvents.map((event: any) => (
-              <Link key={event.id} href={`/events/${event.id}`}
-                className="interactive-control flex items-center gap-3 p-3 rounded-2xl hover:bg-accent transition group border border-transparent hover:border-primary/20 hover:-translate-y-0.5">
-                <div className="h-12 w-12 rounded-xl bg-primary/8 dark:bg-primary/15 border border-primary/15 flex flex-col items-center justify-center shrink-0">
-                  <span className="text-sm font-bold text-primary leading-tight">
-                    {new Date(event.event_date).getDate()}
-                  </span>
-                  <span className="text-[9px] text-primary/70 uppercase font-semibold">
-                    {new Date(event.event_date).toLocaleString('default', { month: 'short' })}
-                  </span>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="space-y-6 lg:col-span-8">
+          {/* Your Channels */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-base font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-amber-500" /> Active Channels
+              </h2>
+              <Link href="/channels" className="text-xs font-bold text-primary hover:underline uppercase tracking-tight">Browse all</Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {yourChannels.length === 0 ? (
+                <div className="col-span-2 rounded-2xl border border-dashed p-8 text-center bg-muted/10">
+                  <p className="text-sm font-medium text-muted-foreground">No active channels found for your academic year.</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate text-foreground group-hover:text-primary transition-colors">{event.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(event.event_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium capitalize ${catColors[event.category] ?? catColors.general}`}>
-                      {event.category}
-                    </span>
+              ) : yourChannels.map((ch: any) => (
+                <Link key={ch.id} href={`/channels/${ch.id}`}>
+                  <div className="group flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:bg-muted/50 hover:border-primary/20 hover:shadow-sm">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                      <Hash className="h-6 w-6" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm truncate text-foreground group-hover:text-primary transition-colors">#{ch.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate uppercase font-bold opacity-70 tracking-tighter mt-0.5">{ch.type}</p>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
 
-        {/* Recent Courses */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-emerald-600" /> Courses
-            </CardTitle>
-            <Link href="/courses" className="text-xs text-primary hover:underline flex items-center gap-1">
-              All <ArrowRight className="h-3 w-3" />
-            </Link>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!recentCourses?.length ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No courses yet</p>
-            ) : recentCourses.map((course: any) => (
-              <Link key={course.id} href={`/courses/${course.id}`}
-                  className="interactive-control flex items-start gap-3 p-2.5 rounded-2xl hover:bg-accent transition group hover:-translate-y-0.5">
-                <div className="h-9 w-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 flex items-center justify-center shrink-0">
-                  <BookOpen className="h-4 w-4 text-emerald-600" />
+          {/* Upcoming Events */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-base font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-blue-500" /> Campus Schedule
+              </h2>
+            </div>
+            <div className="grid gap-3">
+              {upcomingEvents?.length === 0 ? (
+                <div className="rounded-2xl border p-8 text-center bg-muted/5">
+                   <p className="text-sm text-muted-foreground">No upcoming events scheduled at the moment.</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-400">{course.title}</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] capitalize text-muted-foreground">{course.level}</span>
-                    {completedIds.has(course.id) && (
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">✓ Done</span>
-                    )}
+              ) : upcomingEvents?.map((event: any) => (
+                <Link key={event.id} href={`/events/${event.id}`}>
+                  <div className="group flex items-center gap-5 rounded-2xl border bg-card p-4 transition-all hover:bg-muted/50 hover:shadow-sm">
+                    <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/10">
+                      <span className="text-lg leading-none">{new Date(event.event_date).getDate()}</span>
+                      <span className="text-[10px] uppercase tracking-tighter mt-0.5">{new Date(event.event_date).toLocaleString('default', { month: 'short' })}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-bold text-foreground truncate group-hover:text-primary transition-colors">{event.title}</h3>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground font-semibold">
+                        <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {new Date(event.event_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>·</span>
+                        <span className="truncate">{event.location ?? 'Campus'}</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all translate-x-[-4px] group-hover:translate-x-0" />
                   </div>
-                </div>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Sidebar Column */}
+        <div className="space-y-6 lg:col-span-4">
+          <Card className="rounded-2xl border bg-emerald-500/5 dark:bg-emerald-500/10 shadow-none border-emerald-500/10 overflow-hidden">
+            <div className="bg-emerald-500/10 px-4 py-3 border-b border-emerald-500/10">
+              <h3 className="text-xs font-black uppercase tracking-[0.25rem] text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                <BookOpen className="h-4 w-4" /> Academics
+              </h3>
+            </div>
+            <CardContent className="space-y-2 px-3 py-3">
+              {recentCourses?.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4 italic">Discover and start new courses</p>
+              ) : recentCourses?.map((course: any) => (
+                <Link key={course.id} href={`/courses/${course.id}`}>
+                  <div className="group flex items-center gap-3 rounded-xl bg-background/50 p-2.5 border border-transparent hover:border-emerald-500/20 transition-all hover:shadow-sm">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30">
+                      <BookOpen className="h-4 w-4" />
+                    </div>
+                    <p className="font-bold text-xs truncate text-foreground flex-1 group-hover:text-emerald-600 transition-colors">{course.title}</p>
+                    {completedIds.has(course.id) && <Trophy className="h-3.5 w-3.5 text-emerald-500" />}
+                  </div>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-2 gap-3">
+             <QuickNav label="Profile" icon={Users2} href="/settings" />
+             <QuickNav label="Notifs" icon={Bell} href="/notifications" />
+             <QuickNav label="Map" icon={LayoutGrid} href="/channels" />
+             <QuickNav label="Support" icon={Star} href="/settings" />
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-function getGreeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'morning'
-  if (h < 17) return 'afternoon'
-  return 'evening'
-}
-
-function HeroMetric({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string
-  value: string
-  icon: ElementType
-}) {
+function QuickNav({ label, icon: Icon, href }: { label: string, icon: any, href: string }) {
   return (
-    <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
-      <div className="mb-2 flex items-center gap-2 text-primary">
-        <Icon className="h-4 w-4" />
-        <p className="text-[11px] font-bold uppercase tracking-[0.18em]">{label}</p>
-      </div>
-      <p className="text-3xl font-extrabold leading-none text-foreground">{value}</p>
-    </div>
+    <Link href={href} className="flex flex-col items-center justify-center gap-2 rounded-2xl border bg-card p-5 transition-all hover:bg-accent text-muted-foreground hover:text-foreground group border-border hover:shadow-md hover:-translate-y-0.5">
+      <Icon className="h-5 w-5 group-hover:text-primary transition-all duration-300" />
+      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+    </Link>
   )
 }

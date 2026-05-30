@@ -80,29 +80,36 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f2460] via-[#1E3A8A] to-[#1d4ed8] flex items-center justify-center p-4">
-      {/* Background circles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-white/5" />
-        <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-white/5" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[600px] w-[600px] rounded-full bg-white/3 border border-white/5" />
-      </div>
-
-      <div className="w-full max-w-md relative z-10 animate-fade-in">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="h-16 w-16 rounded-2xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center mb-4 shadow-xl">
-            <GraduationCap className="h-8 w-8 text-white" />
+    <div className="grid min-h-screen bg-background text-foreground lg:grid-cols-[0.9fr_1.1fr]">
+      <aside className="hidden border-r bg-[hsl(var(--sidebar-bg))] p-10 text-white lg:flex lg:flex-col lg:justify-between">
+        <div>
+          <div className="mb-6 flex h-11 w-11 items-center justify-center border border-white/15 bg-white/10">
+            <GraduationCap className="h-6 w-6" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Campus Buddy</h1>
-          <p className="text-blue-200 text-sm mt-1">MIT Academy of Engineering</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Campus Buddy</h1>
+          <p className="mt-3 max-w-sm text-sm leading-6 text-white/68">
+            A focused workspace for MIT Academy of Engineering students, professors, and admins.
+          </p>
         </div>
+        <p className="text-xs uppercase tracking-[0.18em] text-white/45">MITAOE campus portal</p>
+      </aside>
 
-        <Card className="border-0 shadow-2xl rounded-2xl overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-blue-400 to-blue-600" />
-          <CardHeader className="pb-4">
-            <CardTitle className="text-xl">
-              {mode === 'login' ? 'Welcome back 👋' : 'Create your account'}
+      <main className="flex min-h-screen items-center justify-center p-4 sm:p-8">
+        <div className="w-full max-w-md animate-fade-in">
+          <div className="mb-6 flex items-center gap-3 lg:hidden">
+            <div className="flex h-10 w-10 items-center justify-center border bg-card">
+              <GraduationCap className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold">Campus Buddy</h1>
+              <p className="text-xs text-muted-foreground">MIT Academy of Engineering</p>
+            </div>
+          </div>
+
+          <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>
+              {mode === 'login' ? 'Welcome back' : 'Create your account'}
             </CardTitle>
             <CardDescription>
               {mode === 'login'
@@ -113,7 +120,7 @@ export default function LoginPage() {
           <CardContent className="space-y-4 pb-6">
             {/* Error */}
             {error && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">
+              <div className="flex items-start gap-2 border border-red-200 bg-red-50 p-3 text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
                 <p className="text-sm">{error}</p>
               </div>
@@ -132,9 +139,10 @@ export default function LoginPage() {
                   <Select value={form.role} onValueChange={(v) => set('role', v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="student">🎓 Student</SelectItem>
-                      <SelectItem value="teacher">📚 Teacher</SelectItem>
-                      <SelectItem value="admin">🛡️ Admin</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="professor">Professor</SelectItem>
+                      <SelectItem value="cr">Class Representative (CR)</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -196,7 +204,7 @@ export default function LoginPage() {
 
             {/* Submit */}
             <Button
-              className="w-full bg-[#1E3A8A] hover:bg-[#1e40af] text-white h-11 text-base font-semibold mt-2"
+              className="mt-2 h-10 w-full text-sm font-medium"
               onClick={mode === 'login' ? handleLogin : handleSignup}
               disabled={loading}
             >
@@ -209,7 +217,7 @@ export default function LoginPage() {
             <p className="text-center text-sm text-muted-foreground pt-1">
               {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
               <button
-                className="text-[#1E3A8A] hover:underline font-semibold"
+                className="font-medium text-primary hover:underline"
                 onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}
               >
                 {mode === 'login' ? 'Create one' : 'Sign in'}
@@ -217,7 +225,8 @@ export default function LoginPage() {
             </p>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }

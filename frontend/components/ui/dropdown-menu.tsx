@@ -29,7 +29,7 @@ const DropdownMenuSubContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent ref={ref}
-    className={cn('z-50 min-w-[8rem] overflow-hidden rounded-2xl border bg-popover/95 p-1 text-popover-foreground shadow-2xl shadow-primary/10 backdrop-blur-xl', className)}
+    className={cn('z-50 min-w-[8rem] overflow-hidden border bg-popover p-1 text-popover-foreground shadow-sm', className)}
     {...props} />
 ))
 
@@ -39,7 +39,7 @@ const DropdownMenuContent = React.forwardRef<
 >(({ className, sideOffset = 4, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content ref={ref} sideOffset={sideOffset}
-      className={cn('z-50 min-w-[8rem] overflow-hidden rounded-2xl border bg-popover/95 p-1.5 text-popover-foreground shadow-2xl shadow-primary/10 backdrop-blur-xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95', className)}
+      className={cn('z-50 min-w-[8rem] overflow-hidden border bg-popover p-1 text-popover-foreground shadow-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0', className)}
       {...props} />
   </DropdownMenuPrimitive.Portal>
 ))
@@ -50,7 +50,7 @@ const DropdownMenuItem = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & { inset?: boolean }
 >(({ className, inset, ...props }, ref) => (
   <DropdownMenuPrimitive.Item ref={ref}
-    className={cn('relative flex cursor-default select-none items-center rounded-xl px-2.5 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50', inset && 'pl-8', className)}
+    className={cn('relative flex cursor-default select-none items-center px-2.5 py-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50', inset && 'pl-8', className)}
     {...props} />
 ))
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName

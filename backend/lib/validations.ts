@@ -15,7 +15,7 @@ export function validateSignupInput(data: {
     return 'Email must be 12-digit PRN followed by @mitaoe.ac.in (e.g. 123456789012@mitaoe.ac.in)'
   if (data.password.length < 8)
     return 'Password must be at least 8 characters'
-  if (!['student', 'teacher', 'admin'].includes(data.role))
+  if (!['student', 'professor', 'cr', 'admin'].includes(data.role))
     return 'Please select a valid role'
   return null
 }

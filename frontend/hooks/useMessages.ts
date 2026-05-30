@@ -72,7 +72,7 @@ export function useMessages(channelId: string) {
           event: 'DELETE',
           schema: 'public',
           table: 'messages',
-          filter: `channel_id=eq.${channelId}`,
+          // Removed filter: `channel_id=eq.${channelId}` to ensure event delivery
         },
         (payload) => {
           setMessages((prev) => prev.filter((message) => message.id !== payload.old.id))

@@ -96,6 +96,7 @@ export async function createChannel(payload: {
   type: string
   department?: string
   year?: number
+  is_private?: boolean
   created_by: string
 }) {
   const supabase = createClient()
@@ -111,6 +112,35 @@ export async function deleteChannel(id: string) {
   const supabase = createClient()
   const { error } = await supabase.from('channels').delete().eq('id', id)
   return { error }
+}
+
+export async function addChannelMember(channelId: string, userId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('channel_members')
+    .insert({ channel_id: channelId, user_id: userId })
+    .select()
+    .single()
+  return { data, error }
+}
+
+export async function removeChannelMember(channelId: string, userId: string) {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('channel_members')
+    .delete()
+    .eq('channel_id', channelId)
+    .eq('user_id', userId)
+  return { error }
+}
+
+export async function getChannelMembers(channelId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('channel_members')
+    .select('*, users(id, name, email, role, avatar_url)')
+    .eq('channel_id', channelId)
+  return { data, error }
 }
 
 export async function getPinnedMessages(channelId: string): Promise<Message[]> {
