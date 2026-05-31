@@ -116,7 +116,7 @@ export default function SettingsClient({
           {/* Editable name */}
           <div className="space-y-1.5">
             <Label>Display Name</Label>
-            {editing ? (
+            {editing && profile.role !== 'student' ? (
               <div className="flex gap-2">
                 <Input
                   value={name}
@@ -140,10 +140,15 @@ export default function SettingsClient({
             ) : (
               <div className="flex items-center justify-between h-10 px-3 rounded-md border bg-muted/40">
                 <span className="text-sm text-foreground">{profile.name}</span>
-                <button onClick={() => setEditing(true)}
-                  className="text-muted-foreground hover:text-foreground transition-colors">
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
+                {profile.role !== 'student' && (
+                  <button onClick={() => setEditing(true)}
+                    className="text-muted-foreground hover:text-foreground transition-colors">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                {profile.role === 'student' && (
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Verified</span>
+                )}
               </div>
             )}
           </div>

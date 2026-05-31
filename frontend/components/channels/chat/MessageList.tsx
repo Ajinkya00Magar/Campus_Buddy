@@ -261,7 +261,7 @@ export function MessageList({
               >
                 {showAvatar && !isMine && (
                   <div className="mb-0.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pr-6">
-                    <span className="text-[11px] font-bold text-emerald-500 overflow-hidden text-ellipsis whitespace-nowrap">~ {user?.name ?? 'Someone'}</span>
+                    <span className="text-[11px] font-bold text-emerald-500 overflow-hidden text-ellipsis whitespace-nowrap">{user?.name ?? 'Someone'}</span>
                     <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter">
                       {user?.role === 'admin' ? 'ADMIN' : user?.role === 'professor' ? 'PROF' : user?.role === 'cr' ? 'CR' : ''} 
                     </span>

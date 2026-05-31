@@ -319,6 +319,10 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================================
 -- 6. ENABLE REALTIME
 -- ============================================================
+ALTER TABLE public.messages         REPLICA IDENTITY FULL;
+ALTER TABLE public.message_reactions REPLICA IDENTITY FULL;
+ALTER TABLE public.poll_votes        REPLICA IDENTITY FULL;
+
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.message_reactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;

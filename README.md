@@ -59,7 +59,7 @@ In **Supabase Dashboard → SQL Editor**, run the contents of:
 ### 5. Create Dummy Data (Optional)
 
 ```bash
-node scripts/seed_students.mjs
+node scripts/seed_users.mjs
 ```
 
 ---
@@ -97,12 +97,18 @@ campus-buddy/
 
 ## 🧪 Test Accounts
 
-After running the schema, sign up with any valid PRN email:
-- `100000000001@mitaoe.ac.in` — student
-- `200000000001@mitaoe.ac.in` — professor  
-- `300000000001@mitaoe.ac.in` — admin
+All accounts use the password: `password123`
 
-*Default password in seed script: `password123`*
+| Role | Email | Password |
+|------|-------|----------|
+| **Admin** | `300000000001@mitaoe.ac.in` | `password123` |
+| **Professor** | `200000000001@mitaoe.ac.in` | `password123` |
+| **CR** | `100000000004@mitaoe.ac.in` | `password123` |
+| **Student (Y2)** | `100000000001@mitaoe.ac.in` | `password123` |
+| **Student (Y3)** | `100000000002@mitaoe.ac.in` | `password123` |
+| **Student (Y1)** | `100000000003@mitaoe.ac.in` | `password123` |
+
+*You can generate these accounts automatically using `node scripts/seed_users.mjs`.*
 
 ---
 
