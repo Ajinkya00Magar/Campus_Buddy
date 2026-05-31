@@ -90,6 +90,43 @@ export async function uploadFile(file: File, channelId: string) {
   return { url: data.publicUrl, error: null }
 }
 
+export async function uploadAvatar(file: File, userId: string) {
+  const supabase = createClient()
+  const ext = file.name.split('.').pop()
+  const path = `${userId}/${Date.now()}.${ext}`
+  
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true })
+    
+  if (error) return { url: null, error }
+  
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  
+  // Update the user's profile with the new avatar URL
+  const { error: profileError } = await supabase
+    .from('users')
+    .update({ avatar_url: data.publicUrl })
+    .eq('id', userId)
+    
+  return { url: data.publicUrl, error: profileError }
+}
+
+export async function deleteAvatar(userId: string) {
+  const supabase = createClient()
+  
+  // 1. Set avatar_url to null in public.users
+  const { error: profileError } = await supabase
+    .from('users')
+    .update({ avatar_url: null })
+    .eq('id', userId)
+    
+  // 2. We don't necessarily need to delete from storage immediately 
+  // but we could if we wanted to be clean. For now, nulling the profile is enough.
+  
+  return { error: profileError }
+}
+
 export async function createChannel(payload: {
   name: string
   description?: string

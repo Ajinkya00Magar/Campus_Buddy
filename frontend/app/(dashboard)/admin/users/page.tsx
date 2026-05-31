@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { formatDate } from '@/lib/utils'
+import { formatDate, getInitials } from '@/lib/utils'
 import { Users, ArrowLeft, Loader2, Save } from 'lucide-react'
 import Link from 'next/link'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import type { User, UserRole } from '@/types'
 
 const roleColors: Record<string, string> = {
@@ -87,9 +88,12 @@ export default function AdminUsersPage() {
                 <tr key={u.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center shrink-0">
-                        {u.name?.[0]?.toUpperCase() ?? '?'}
-                      </div>
+                      <Avatar className="h-10 w-10 border border-border shadow-sm shrink-0">
+                        <AvatarImage src={u.avatar_url} />
+                        <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                          {getInitials(u.name)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="min-w-0">
                         <p className="font-semibold text-sm text-foreground truncate">{u.name}</p>
                         <p className="text-xs text-muted-foreground truncate">{u.email}</p>

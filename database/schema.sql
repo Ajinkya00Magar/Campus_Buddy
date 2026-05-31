@@ -1,5 +1,5 @@
 -- ============================================================
--- CAMPUS BUDDY — COMPLETE SUPABASE SQL SCHEMA (FINAL)
+-- CAMPUS BUDDY — COMPLETE SUPABASE SQL SCHEMA (v2.0 FINAL)
 -- Run this entire file in Supabase SQL Editor
 -- ============================================================
 
@@ -16,7 +16,7 @@ CREATE TABLE public.users (
   email       TEXT NOT NULL UNIQUE,
   role        TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'professor', 'cr', 'admin')),
   department  TEXT,
-  year        INTEGER CHECK (year BETWEEN 1 AND 4),
+  year        INTEGER CHECK (year BETWEEN 1 AND 4), -- Nullable for Professors and Admins
   avatar_url  TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
@@ -279,12 +279,21 @@ CREATE POLICY "polls_insert" ON public.polls FOR INSERT WITH CHECK (auth.uid() =
 -- 4. STORAGE SETUP
 -- ============================================================
 INSERT INTO storage.buckets (id, name, public) 
-VALUES ('channel-files', 'channel-files', true)
+VALUES 
+  ('channel-files', 'channel-files', true),
+  ('avatars',       'avatars',       true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Policies for channel-files
 CREATE POLICY "Allow authenticated uploads" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'channel-files');
 CREATE POLICY "Allow public viewing" ON storage.objects FOR SELECT TO public USING (bucket_id = 'channel-files');
 CREATE POLICY "Allow individual deletion" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'channel-files' AND (auth.uid() = owner));
+
+-- Policies for avatars
+CREATE POLICY "Avatar insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars');
+CREATE POLICY "Avatar select" ON storage.objects FOR SELECT TO public USING (bucket_id = 'avatars');
+CREATE POLICY "Avatar update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'avatars' AND (auth.uid() = owner));
+CREATE POLICY "Avatar delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'avatars' AND (auth.uid() = owner));
 
 -- ============================================================
 -- 5. TRIGGERS & FUNCTIONS

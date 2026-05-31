@@ -57,16 +57,20 @@ export default function LoginPage() {
     const err = validateSignupInput(form)
     if (err) { setError(err); return }
     setLoading(true)
+
+    const isStudent = form.role === 'student' || form.role === 'cr'
+    const signupData: any = {
+      name: form.name.trim(),
+      role: form.role,
+      department: form.department.trim(),
+    }
+    if (isStudent) signupData.year = parseInt(form.year)
+
     const { error } = await supabase.auth.signUp({
       email: form.email.trim().toLowerCase(),
       password: form.password,
       options: {
-        data: {
-          name: form.name.trim(),
-          role: form.role,
-          department: form.department.trim(),
-          year: parseInt(form.year),
-        },
+        data: signupData,
         emailRedirectTo: `${window.location.origin}/api/auth/callback`,
       },
     })
@@ -113,8 +117,8 @@ export default function LoginPage() {
             </CardTitle>
             <CardDescription>
               {mode === 'login'
-                ? 'Sign in with your PRN email address'
-                : 'Register with your 12-digit PRN email'}
+                ? 'Sign in with your campus email address'
+                : 'Register with your official @mitaoe.ac.in email'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pb-6">
@@ -146,23 +150,25 @@ export default function LoginPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className={cn("grid gap-3", (form.role === 'student' || form.role === 'cr') ? "grid-cols-2" : "grid-cols-1")}>
                   <div className="space-y-1.5">
                     <Label>Department</Label>
                     <Input placeholder="e.g. CSE" value={form.department}
                       onChange={(e) => set('department', e.target.value)} />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Year</Label>
-                    <Select value={form.year} onValueChange={(v) => set('year', v)}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {[1, 2, 3, 4].map((y) => (
-                          <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {(form.role === 'student' || form.role === 'cr') && (
+                    <div className="space-y-1.5">
+                      <Label>Year</Label>
+                      <Select value={form.year} onValueChange={(v) => set('year', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {[1, 2, 3, 4].map((y) => (
+                            <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -172,12 +178,12 @@ export default function LoginPage() {
               <Label>College Email</Label>
               <Input
                 type="email"
-                placeholder="123456789012@mitaoe.ac.in"
+                placeholder="email@mitaoe.ac.in"
                 value={form.email}
                 onChange={(e) => set('email', e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && mode === 'login' && handleLogin()}
               />
-              <p className="text-[11px] text-muted-foreground">12-digit PRN followed by @mitaoe.ac.in</p>
+              <p className="text-[11px] text-muted-foreground">Use your official MITAOE email address</p>
             </div>
 
             {/* Password */}

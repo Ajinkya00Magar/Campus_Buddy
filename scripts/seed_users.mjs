@@ -30,10 +30,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 const dummyUsers = [
   // ADMIN
-  { name: 'Admin User', email: '300000000001@mitaoe.ac.in', role: 'admin', department: 'IT', year: null },
+  { name: 'Admin User', email: 'admin@mitaoe.ac.in', role: 'admin', department: 'IT', year: null },
   
   // PROFESSOR
-  { name: 'Dr. Vikram Mehra', email: '200000000001@mitaoe.ac.in', role: 'professor', department: 'CSE', year: null },
+  { name: 'Dr. Vikram Mehra', email: 'prof.vikram@mitaoe.ac.in', role: 'professor', department: 'CSE', year: null },
   
   // CR (Class Representative)
   { name: 'Siddharth Malhotra', email: '100000000004@mitaoe.ac.in', role: 'cr', department: 'CSE', year: 3 },
@@ -47,7 +47,23 @@ const dummyUsers = [
 async function seed() {
   console.log('🚀 Starting to seed campus users...')
 
+  // 1. Get list of existing auth users to handle cleanup
+  const { data: { users: existingAuthUsers }, error: listError } = await supabase.auth.admin.listUsers()
+  
+  if (listError) {
+    console.error('❌ Failed to fetch existing users:', listError.message)
+    return
+  }
+
   for (const user of dummyUsers) {
+    // 2. Cleanup: If user exists in Auth but not in public.users (or if we want a fresh start)
+    const existing = existingAuthUsers.find(u => u.email === user.email)
+    if (existing) {
+      console.log(`🧹 Cleaning up existing user: ${user.email}`)
+      await supabase.auth.admin.deleteUser(existing.id)
+    }
+
+    // 3. Create fresh user
     const { data, error } = await supabase.auth.admin.createUser({
       email: user.email,
       password: 'password123',
@@ -61,11 +77,7 @@ async function seed() {
     })
 
     if (error) {
-      if (error.message.includes('already exists')) {
-        console.log(`ℹ️ User already exists: ${user.email}`)
-      } else {
-        console.error(`❌ Failed to create ${user.email}:`, error.message)
-      }
+      console.error(`❌ Failed to create ${user.email}:`, error.message)
     } else {
       console.log(`✅ Created ${user.role.toUpperCase()}: ${user.name} (${user.email})`)
     }

@@ -14,6 +14,7 @@ Built with: **Next.js 15 · TypeScript · Tailwind CSS · Supabase**
 | **Integrated Dashboard** | Compact overview with personalized greetings, quick stats, and relevant channels. |
 | **Real-time Channels** | Discord-style unified sidebar, strict academic year filtering, private rooms, and file sharing. |
 | **Advanced Chat** | **Jump to Message** for pins/replies, emoji reactions, and modern bubble alignment. |
+| **User Profiles** | Custom **Profile Picture** uploads, verified identities for students, and role-based permissions. |
 | **Academics Hub** | Integrated links to **PYQs** and **Notes** portals, plus module-based Courses. |
 | **Events & Clubs** | Campus-wide event calendar with RSVP and comprehensive Club directories. |
 | **Admin Controls** | Manage users, assign roles, create private channels, and manage student memberships. |
@@ -101,8 +102,8 @@ All accounts use the password: `password123`
 
 | Role | Email | Password |
 |------|-------|----------|
-| **Admin** | `300000000001@mitaoe.ac.in` | `password123` |
-| **Professor** | `200000000001@mitaoe.ac.in` | `password123` |
+| **Admin** | `admin@mitaoe.ac.in` | `password123` |
+| **Professor** | `prof.vikram@mitaoe.ac.in` | `password123` |
 | **CR** | `100000000004@mitaoe.ac.in` | `password123` |
 | **Student (Y2)** | `100000000001@mitaoe.ac.in` | `password123` |
 | **Student (Y3)** | `100000000002@mitaoe.ac.in` | `password123` |

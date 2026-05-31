@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Users, Calendar, BookOpen, Hash, Users2, ArrowRight, Shield } from 'lucide-react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getInitials } from '@/lib/utils'
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -25,7 +27,7 @@ export default async function AdminPage() {
     supabase.from('courses').select('*', { count: 'exact', head: true }),
     supabase.from('channels').select('*', { count: 'exact', head: true }),
     supabase.from('clubs').select('*', { count: 'exact', head: true }),
-    supabase.from('users').select('name, email, role, created_at').order('created_at', { ascending: false }).limit(5),
+    supabase.from('users').select('name, email, role, avatar_url, created_at').order('created_at', { ascending: false }).limit(5),
   ])
 
   const stats = [
@@ -87,9 +89,12 @@ export default async function AdminPage() {
         <div className="divide-y border-border">
           {(recentUsers ?? []).map((u: any, i: number) => (
             <div key={i} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/50 transition-colors">
-              <div className="h-9 w-9 rounded-full bg-primary text-primary-foreground text-sm font-bold flex items-center justify-center shrink-0">
-                {u.name?.[0]?.toUpperCase() ?? '?'}
-              </div>
+              <Avatar className="h-9 w-9 border border-border shadow-sm shrink-0">
+                <AvatarImage src={u.avatar_url} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                  {getInitials(u.name)}
+                </AvatarFallback>
+              </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm text-foreground">{u.name}</p>
                 <p className="text-xs text-muted-foreground truncate">{u.email}</p>
