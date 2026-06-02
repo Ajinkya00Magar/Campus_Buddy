@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { validateSignupInput, isValidMitaoeEmail } from '@/lib/validations'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,10 +15,14 @@ import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 type Mode = 'login' | 'signup'
 
+function getAuthErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message
+  return 'Something went wrong. Please try again.'
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const supabase = createClient()
 
   const [mode, setMode] = useState<Mode>('login')
   const [loading, setLoading] = useState(false)
@@ -35,20 +40,28 @@ export default function LoginPage() {
   const handleLogin = async () => {
     setError('')
     if (!isValidMitaoeEmail(form.email)) {
-      setError('Use your PRN email: 123456789012@mitaoe.ac.in')
+      setError('Use your official @mitaoe.ac.in email address')
       return
     }
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: form.email.trim().toLowerCase(),
-      password: form.password,
-    })
-    setLoading(false)
-    if (error) {
-      setError(error.message)
-    } else {
-      router.push('/dashboard')
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      })
+
+      if (error) {
+        setError(error.message)
+        return
+      }
+
+      router.replace('/dashboard')
       router.refresh()
+    } catch (error) {
+      setError(getAuthErrorMessage(error))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -80,6 +93,10 @@ export default function LoginPage() {
     } else {
       toast({ title: 'Account created! 🎉', description: 'Check your email to verify your account, then sign in.' })
       setMode('login')
+    } catch (error) {
+      setError(getAuthErrorMessage(error))
+    } finally {
+      setLoading(false)
     }
   }
 
