@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { useAllUsers } from '@/hooks/useAllUsers'
 import type { User, UserRole } from '@/types'
 
 const roleColors: Record<string, string> = {
@@ -20,21 +21,8 @@ const roleColors: Record<string, string> = {
 export default function AdminUsersPage() {
   const supabase = createClient()
   const { toast } = useToast()
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+  const { users, setUsers, loading } = useAllUsers()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-      setUsers(data ?? [])
-      setLoading(false)
-    }
-    load()
-  }, [])
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     setUpdatingId(userId)

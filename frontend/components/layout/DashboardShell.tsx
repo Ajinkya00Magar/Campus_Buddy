@@ -5,13 +5,17 @@ import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 import { usePathname } from 'next/navigation'
+import { useChannels } from '@/hooks/useChannels'
 import { cn } from '../../../backend/lib/utils'
 import type { User, Channel } from '@/types'
 
-function Shell({ user, channels, children }: { user: User | null; channels: Channel[]; children: React.ReactNode }) {
+function Shell({ user, channels: initialChannels, children }: { user: User | null; channels: Channel[]; children: React.ReactNode }) {
   const { isOpen, close } = useSidebar()
   const pathname = usePathname()
   const isChannelPage = pathname.startsWith('/channels/')
+  
+  // Realtime channels for the sidebar
+  const channels = useChannels(initialChannels, user)
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-background">

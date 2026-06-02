@@ -18,8 +18,9 @@ export function useNotifications(userId: string | undefined) {
       setLoading(false)
     })
 
+    const channelIdSuffix = Math.random().toString(36).slice(2, 8)
     const channel = supabase
-      .channel(`notifs:${userId}`)
+      .channel(`notifs:${userId}:${channelIdSuffix}`)
       .on(
         'postgres_changes',
         {

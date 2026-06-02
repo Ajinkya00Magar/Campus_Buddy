@@ -26,8 +26,9 @@ export function useMessages(channelId: string) {
       scrollToBottom('instant')
     })
 
+    const channelIdSuffix = Math.random().toString(36).slice(2, 8)
     const channel = supabase
-      .channel(`messages:${channelId}`)
+      .channel(`messages:${channelId}:${channelIdSuffix}`)
       .on(
         'postgres_changes',
         {
