@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   experimental: {
     externalDir: true,
   },
-  distDir: '../.next',
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },

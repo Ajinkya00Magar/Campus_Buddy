@@ -62,7 +62,7 @@ export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) 
                   <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1"><Users2 className="h-3 w-3" />{club._members_count} members</span>
                     {(club.achievements?.length ?? 0) > 0 && (
-                      <span>🏆 {club.achievements.length} achievement{club.achievements.length > 1 ? 's' : ''}</span>
+                      <span>🏆 {club.achievements?.length} achievement{(club.achievements?.length ?? 0) > 1 ? 's' : ''}</span>
                     )}
                   </div>
                 </CardContent>
