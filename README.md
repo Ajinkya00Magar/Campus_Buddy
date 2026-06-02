@@ -1,6 +1,6 @@
 # 🎓 Campus Buddy
 
-**A centralized campus platform for MIT Academy of Engineering**
+**A centralized, real-time campus platform for MIT Academy of Engineering**
 
 Built with: **Next.js 15 · TypeScript · Tailwind CSS · Supabase**
 
@@ -8,16 +8,16 @@ Built with: **Next.js 15 · TypeScript · Tailwind CSS · Supabase**
 
 ## ✨ Features
 
-| Module | Features |
-|--------|----------|
-| **Auth** | PRN email validation (`123456789012@mitaoe.ac.in`), role-based (student/teacher/admin) |
-| **Dashboard** | Personalized greeting, quick stats, upcoming events, recent courses |
-| **Events** | Browse/filter events, RSVP (going/maybe/not going), event detail with attendee list |
-| **Clubs** | Club directory, join/leave, achievements, member list |
-| **Courses** | Module-based learning, progress tracking, badge on completion |
-| **Channels** | Real-time chat (Supabase Realtime), file upload, poll creation, pinned messages |
-| **Notifications** | Real-time badge, mark read, full notifications page |
-| **Admin Panel** | Manage users, events, clubs, channels, courses |
+| Module                   | Features                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------- |
+| **Auth & RBAC**          | PRN email validation, 4-tier roles: **Student, Professor, CR, and Admin**.                        |
+| **Integrated Dashboard** | Compact overview with personalized greetings, quick stats, and relevant channels.                 |
+| **Real-time Channels**   | Discord-style unified sidebar, strict academic year filtering, private rooms, and file sharing.   |
+| **Advanced Chat**        | **Jump to Message** for pins/replies, emoji reactions, and modern bubble alignment.               |
+| **User Profiles**        | Custom **Profile Picture** uploads, verified identities for students, and role-based permissions. |
+| **Academics Hub**        | Integrated links to **PYQs** and **Notes** portals, plus module-based Courses.                    |
+| **Events & Clubs**       | Campus-wide event calendar with RSVP and comprehensive Club directories.                          |
+| **Admin Controls**       | Manage users, assign roles, create private channels, and manage student memberships.              |
 
 ---
 
@@ -43,6 +43,7 @@ cp frontend/.env.example frontend/.env.local
 ```
 
 Edit `frontend/.env.local`:
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
@@ -52,35 +53,17 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ### 4. Run Database Schema
 
-In **Supabase Dashboard → SQL Editor**, paste and run the entire contents of `database/schema.sql`.
+In **Supabase Dashboard → SQL Editor**, run the contents of:
 
-This creates all tables, RLS policies, indexes, the auto-profile trigger, and seed data.
+1. `database/schema.sql` (Base tables and RLS)
+2. `database/storage_setup.sql` (Storage buckets and permissions)
+3. `database/realtime_fix.sql` (Enhanced deletion sync)
 
-### 5. Create Storage Buckets
-
-In **Supabase Dashboard → Storage**, create these buckets (all public):
-
-| Bucket | Public |
-|--------|--------|
-| `avatars` | ✅ |
-| `event-banners` | ✅ |
-| `club-assets` | ✅ |
-| `course-thumbs` | ✅ |
-| `channel-files` | ✅ |
-
-### 6. Configure Auth
-
-In **Supabase Dashboard → Authentication → URL Configuration**:
-- **Site URL:** `http://localhost:3000`
-- **Redirect URLs:** `http://localhost:3000/api/auth/callback`
-
-### 7. Run the App
+### 5. Create Dummy Data (Optional)
 
 ```bash
-npm run dev
+node scripts/seed_users.mjs
 ```
-
-Open [http://localhost:3000](http://localhost:3000)
 
 ---
 
@@ -89,55 +72,54 @@ Open [http://localhost:3000](http://localhost:3000)
 ```
 campus-buddy/
 ├── frontend/                  # Next.js app and UI
-│   ├── app/
-│   │   ├── (auth)/login/      # Login & signup page
-│   │   ├── (dashboard)/       # All protected pages
-│   │   └── api/auth/callback/ # Auth callback
-│   ├── components/            # Layout + shadcn-style UI primitives
-│   ├── contexts/              # Sidebar state provider
-│   ├── hooks/                 # useUser, useMessages, useNotifications
-│   ├── types/                 # TypeScript interfaces
-│   ├── middleware.ts          # Route protection
-│   └── *.config.*             # Next, Tailwind, PostCSS, TypeScript config
-├── backend/                   # Supabase access and app data layer
+│   ├── app/(dashboard)/       # All protected pages (Dashboard, Admin, Chat)
+│   ├── components/
+│   │   ├── channels/chat/     # Modularized chat components (MessageList, Polls, etc.)
+│   │   └── layout/            # Sidebar (Integrated navigation), Navbar
+│   ├── hooks/                 # useUser, useMessages (Realtime), useNotifications
+│   └── types/                 # Unified TypeScript interfaces
+├── backend/                   # Data layer & Business logic
 │   ├── lib/
-│   │   ├── supabase/          # client.ts + server.ts
-│   │   ├── utils.ts           # helpers
+│   │   ├── chat-utils.ts      # Heavy lifting for chat filtering & processing
 │   │   └── validations.ts     # PRN email + form validation
-│   └── services/              # Data access layer (Supabase queries)
-├── database/
-│   └── schema.sql             # Full DB schema + seed data
-├── package.json               # Root scripts run the frontend app
-└── package-lock.json
+│   └── services/              # Supabase data access layer
+├── database/                  # SQL Migrations & Final Schema
+└── scripts/                   # Seeding and maintenance scripts
 ```
 
 ---
 
-## 🔐 Email Validation
+## 🔐 Security & Access Control
 
-Only emails matching this pattern are accepted:
-```
-123456789012@mitaoe.ac.in
-└──────────┘  └─────────┘
-  12-digit PRN   domain
-```
-
----
-
-## 🚢 Deploy to Vercel
-
-1. Push to GitHub
-2. Import on [vercel.com](https://vercel.com)
-3. Add environment variables
-4. Deploy ✅
-
-Update Supabase Auth URLs to your Vercel domain after deploy.
+- **Year-Based Isolation**: Students only see channels matching their PRN year (1-4).
+- **Private Rooms**: Admins can create private channels and explicitly add specific students.
+- **Elevated Roles**: Professors and CRs can manage messages, create events, and moderate content.
+- **Real-time Sync**: Full `REPLICA IDENTITY` ensures deletions and updates sync instantly across all clients.
 
 ---
 
 ## 🧪 Test Accounts
 
-After running the schema, sign up with any valid PRN email:
-- `100000000001@mitaoe.ac.in` — student
-- `200000000001@mitaoe.ac.in` — teacher  
-- `300000000001@mitaoe.ac.in` — admin
+All accounts use the password: `password123`
+
+| Role             | Email                       | Password      |
+| ---------------- | --------------------------- | ------------- |
+| **Admin**        | `300000000001@mitaoe.ac.in` | `password123` |
+| **Professor**    | `200000000001@mitaoe.ac.in` | `password123` |
+| **CR**           | `100000000004@mitaoe.ac.in` | `password123` |
+| **Student (Y2)** | `100000000001@mitaoe.ac.in` | `password123` |
+| **Student (Y3)** | `100000000002@mitaoe.ac.in` | `password123` |
+| **Student (Y1)** | `100000000003@mitaoe.ac.in` | `password123` |
+
+_You can generate these accounts automatically using `node scripts/seed_users.mjs`._
+
+---
+
+## 🚢 Deploy
+
+This project is optimized for **Vercel**.
+
+1. Push to GitHub.
+2. Connect repository to Vercel.
+3. Add Environment Variables.
+4. Update Supabase Auth URLs to your production domain.

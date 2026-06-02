@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'teacher' | 'admin'
+export type UserRole = 'student' | 'professor' | 'cr' | 'admin'
 export type ChannelType = 'academic' | 'subject' | 'club' | 'official'
 export type EventStatus = 'going' | 'maybe' | 'not_going'
 export type NotifType = 'message' | 'event' | 'course' | 'info'

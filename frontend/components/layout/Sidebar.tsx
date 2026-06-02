@@ -1,26 +1,30 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/contexts/SidebarContext'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Users2, BookOpen,
-  Hash, Bell, Settings, GraduationCap, Shield, ChevronLeft,
+  Hash, Bell, Settings, GraduationCap, Shield, ChevronLeft, ChevronRight,
+  Lock, ChevronDown, FileText, Archive
 } from 'lucide-react'
-import type { UserRole } from '@/types'
+import type { UserRole, Channel } from '@/types'
 
 const navItems = [
   { href: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/channels',      label: 'Channels',      icon: Hash, isChannelParent: true },
   { href: '/events',        label: 'Events',        icon: Calendar },
   { href: '/clubs',         label: 'Clubs',         icon: Users2 },
   { href: '/courses',       label: 'Courses',       icon: BookOpen },
-  { href: '/channels',      label: 'Channels',      icon: Hash },
+  { href: 'https://mitaoe-pyqs.vercel.app/', label: 'PYQs', icon: Archive, external: true },
+  { href: 'https://mitaoe-notes.vercel.app/', label: 'Notes', icon: FileText, external: true },
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ]
 const adminItems = [{ href: '/admin', label: 'Admin Panel', icon: Shield }]
 
-export default function Sidebar({ role }: { role: UserRole }) {
+export default function Sidebar({ role, channels = [] }: { role: UserRole, channels?: Channel[] }) {
   const pathname = usePathname()
   const { isOpen, toggle, close } = useSidebar()
   const items = role === 'admin' ? [...navItems, ...adminItems] : navItems
@@ -29,53 +33,66 @@ export default function Sidebar({ role }: { role: UserRole }) {
     <>
       {/* ── Desktop: in-flow, width animates ── */}
       <aside
-        style={{ width: isOpen ? '240px' : '64px' }}
-        className="relative z-20 hidden h-full shrink-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.28),transparent_32%),linear-gradient(180deg,#0f2f70,#111827)] shadow-[18px_0_60px_rgba(15,23,42,0.20)] transition-[width] duration-300 ease-in-out md:flex dark:bg-[radial-gradient(circle_at_top,rgba(96,165,250,0.16),transparent_32%),linear-gradient(180deg,#0f172a,#020617)]"
+        style={{ width: isOpen ? '232px' : '60px' }}
+        className="relative z-20 hidden h-full shrink-0 flex-col overflow-hidden border-r border-border bg-slate-100 transition-[width] duration-150 ease-in-out dark:border-slate-800 dark:bg-slate-950 md:flex"
       >
-        <SidebarInner items={items} pathname={pathname} isOpen={isOpen} toggle={toggle} onNavClick={() => {}} />
+        <SidebarInner items={items} pathname={pathname} isOpen={isOpen} toggle={toggle} onNavClick={() => {}} channels={channels} />
       </aside>
 
       {/* ── Mobile: fixed overlay, slides in ── */}
       <aside className={cn(
-        'flex md:hidden flex-col bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.28),transparent_32%),linear-gradient(180deg,#0f2f70,#111827)] dark:bg-[#0f1929] h-full shadow-2xl',
-        'fixed top-0 left-0 z-40 w-[240px]',
-        'transition-transform duration-300 ease-in-out',
+        'flex md:hidden h-full flex-col border-r border-border bg-slate-100 dark:border-slate-800 dark:bg-slate-950',
+        'fixed top-0 left-0 z-40 w-[232px]',
+        'transition-transform duration-150 ease-in-out',
         isOpen ? 'translate-x-0' : '-translate-x-full',
       )}>
-        <SidebarInner items={items} pathname={pathname} isOpen={true} toggle={toggle} onNavClick={close} />
+        <SidebarInner items={items} pathname={pathname} isOpen={true} toggle={toggle} onNavClick={close} channels={channels} />
       </aside>
     </>
   )
 }
 
 function SidebarInner({
-  items, pathname, isOpen, toggle, onNavClick,
+  items, pathname, isOpen, toggle, onNavClick, channels
 }: {
-  items: typeof navItems
+  items: any[]
   pathname: string
   isOpen: boolean
   toggle: () => void
   onNavClick: () => void
+  channels: Channel[]
 }) {
+  const [channelsExpanded, setChannelsExpanded] = useState(pathname.startsWith('/channels'))
+  
+  useEffect(() => {
+    if (pathname.startsWith('/channels')) {
+      setChannelsExpanded(true)
+    }
+  }, [pathname])
+
+  const official = channels.filter(c => c.type === 'official')
+  const curriculum = channels.filter(c => c.type === 'academic' || c.type === 'subject')
+  const clubs = channels.filter(c => c.type === 'club')
+
   return (
     <div className="flex flex-col h-full">
       {/* Brand row */}
-      <div className="flex h-16 shrink-0 items-center border-b border-white/10">
+      <div className="flex h-14 shrink-0 items-center border-b border-border dark:border-slate-800">
         {isOpen ? (
           <>
-            <div className="flex min-w-0 flex-1 items-center gap-2.5 px-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/15 shadow-inner backdrop-blur">
-                <GraduationCap className="h-5 w-5 text-white" />
+            <div className="flex min-w-0 flex-1 items-center gap-2.5 px-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center border border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900">
+                <GraduationCap className="h-5 w-5 text-slate-700 dark:text-slate-100" />
               </div>
               <div>
-                <p className="whitespace-nowrap text-sm font-extrabold leading-tight tracking-tight text-white">Campus Buddy</p>
-                <p className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-200/80">MITAOE</p>
+                <p className="whitespace-nowrap text-sm font-semibold leading-tight text-slate-900 dark:text-slate-100">Campus Buddy</p>
+                <p className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">MITAOE</p>
               </div>
             </div>
             <button
               onClick={toggle}
               title="Collapse sidebar"
-              className="interactive-control mr-2 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white/50 transition hover:bg-white/10 hover:text-white"
+              className="interactive-control mr-2 flex h-8 w-8 shrink-0 items-center justify-center text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -84,44 +101,86 @@ function SidebarInner({
           <button
             onClick={toggle}
             title="Expand sidebar"
-            className="flex h-full w-full items-center justify-center text-white/70 transition-colors hover:bg-white/8 hover:text-white"
+            className="group flex h-full w-full items-center justify-center text-slate-500 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
           >
-            <GraduationCap className="h-5 w-5 text-white" />
+            <GraduationCap className="h-5 w-5 transition-opacity group-hover:opacity-0" />
+            <ChevronRight className="absolute h-5 w-5 opacity-0 transition-opacity group-hover:opacity-100" />
           </button>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-2 py-4">
-        {items.map(({ href, label, icon: Icon }) => {
+      <nav className="flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden px-2 py-3 custom-scrollbar">
+        {items.map((item) => {
+          const { href, label, icon: Icon, isChannelParent, external } = item
           const isActive = pathname === href || (href.length > 1 && pathname.startsWith(href))
+          const isChannelsOpen = isChannelParent && channelsExpanded && isOpen
+          
           return (
-            <div key={href} className="relative group/tip">
-              <Link
-                href={href}
-                onClick={onNavClick}
-                className={cn(
-                  'interactive-control flex items-center rounded-xl text-sm font-bold transition-all duration-200',
-                  isOpen ? 'gap-3 px-3 py-2.5' : 'justify-center py-2.5',
-                  isActive
-                    ? 'bg-white/18 text-white shadow-lg shadow-black/10'
-                    : 'text-blue-100/72 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white',
-                )}
-              >
-                <Icon className={cn('shrink-0', isActive ? 'h-4 w-4' : 'h-4 w-4')} />
-                {isOpen && <span className="leading-none truncate">{label}</span>}
-                {/* Active indicator dot */}
-                {isActive && isOpen && (
-                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/60 shrink-0" />
-                )}
-              </Link>
+            <div key={href} className="space-y-0.5">
+              <div className="relative group/tip">
+                <Link
+                  href={href}
+                  target={external ? "_blank" : undefined}
+                  rel={external ? "noopener noreferrer" : undefined}
+                  onClick={(e) => {
+                    if (isChannelParent) {
+                      setChannelsExpanded(!channelsExpanded)
+                      if (pathname.startsWith('/channels')) {
+                        e.preventDefault()
+                        return // Do not close the mobile sidebar if we're just toggling the menu
+                      }
+                    }
+                    if (!external) onNavClick()
+                  }}
+                  className={cn(
+                    'interactive-control flex items-center text-sm font-medium transition-colors',
+                    isOpen ? 'gap-3 px-2.5 py-2' : 'justify-center py-2',
+                    isActive
+                      ? 'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+                      : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {isOpen && <span className="leading-none truncate flex-1">{label}</span>}
+                  {isActive && isOpen && !isChannelParent && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300 shrink-0" />
+                  )}
+                  {isChannelParent && isOpen && (
+                    <ChevronDown className={cn("h-3 w-3 opacity-40 transition-transform", channelsExpanded ? "rotate-0" : "-rotate-90")} />
+                  )}
+                </Link>
 
-              {/* Tooltip when collapsed */}
-              {!isOpen && (
-                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
-                  <span className="block bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
-                    {label}
-                  </span>
+                {!isOpen && (
+                  <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
+                    <span className="block border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground shadow-sm whitespace-nowrap">
+                      {label}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Sub-channels under Channels */}
+              {isChannelsOpen && (
+                <div className="mt-1 space-y-4 pl-4 pb-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                  {official.length > 0 && (
+                    <div className="space-y-0.5">
+                      <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">General</p>
+                      {official.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} />)}
+                    </div>
+                  )}
+                  {curriculum.length > 0 && (
+                    <div className="space-y-0.5">
+                      <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Curriculum</p>
+                      {curriculum.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} />)}
+                    </div>
+                  )}
+                  {clubs.length > 0 && (
+                    <div className="space-y-0.5">
+                      <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Clubs</p>
+                      {clubs.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} />)}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -130,17 +189,17 @@ function SidebarInner({
       </nav>
 
       {/* Bottom — settings */}
-      <div className="shrink-0 border-t border-white/10 px-2 py-3">
+      <div className="shrink-0 border-t border-border px-2 py-2 dark:border-slate-800">
         <div className="relative group/tip">
           <Link
             href="/settings"
             onClick={onNavClick}
             className={cn(
-              'interactive-control flex items-center rounded-xl text-sm font-bold transition-all',
-              isOpen ? 'gap-3 px-3 py-2.5' : 'justify-center py-2.5',
+              'interactive-control flex items-center text-sm font-medium transition-colors',
+              isOpen ? 'gap-3 px-2.5 py-2' : 'justify-center py-2',
               pathname.startsWith('/settings')
-                ? 'bg-white/15 text-white'
-                : 'text-blue-100/70 hover:bg-white/8 hover:text-white',
+                ? 'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+                : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
             )}
           >
             <Settings className="h-4 w-4 shrink-0" />
@@ -148,7 +207,7 @@ function SidebarInner({
           </Link>
           {!isOpen && (
             <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 opacity-0 group-hover/tip:opacity-100 transition-opacity">
-              <span className="block bg-gray-900 dark:bg-gray-700 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-xl">
+              <span className="block border bg-popover px-2.5 py-1.5 text-xs font-medium text-popover-foreground shadow-sm">
                 Settings
               </span>
             </div>
@@ -156,5 +215,29 @@ function SidebarInner({
         </div>
       </div>
     </div>
+  )
+}
+
+function SidebarChannelLink({ channel, pathname, onNavClick }: { channel: Channel, pathname: string, onNavClick: () => void }) {
+  const isActive = pathname === `/channels/${channel.id}`
+  
+  return (
+    <Link
+      href={`/channels/${channel.id}`}
+      onClick={onNavClick}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+        isActive 
+          ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100" 
+          : "text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+      )}
+    >
+      {channel.is_private ? (
+        <Lock className="h-3 w-3 shrink-0 opacity-60" />
+      ) : (
+        <Hash className="h-3 w-3 shrink-0 opacity-60" />
+      )}
+      <span className="truncate">{channel.name}</span>
+    </Link>
   )
 }

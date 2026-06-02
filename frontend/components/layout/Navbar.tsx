@@ -29,20 +29,20 @@ export default function Navbar({ user }: { user: UserType | null }) {
   if (!user) return null
 
   return (
-    <header className="z-20 mx-3 mt-3 flex h-16 shrink-0 items-center gap-3 rounded-2xl border bg-card/78 px-4 shadow-[0_18px_50px_hsl(222_47%_11%_/_0.08)] backdrop-blur-xl md:mx-5">
+    <header className="z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-card px-3 md:px-4">
 
       {/* Sidebar toggle */}
       <button
         onClick={toggleSidebar}
         aria-label="Toggle sidebar"
-        className="interactive-control flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition hover:-translate-y-0.5 hover:bg-accent hover:text-foreground"
+        className="interactive-control flex h-9 w-9 shrink-0 items-center justify-center text-muted-foreground transition hover:bg-accent hover:text-foreground md:hidden"
       >
         <Menu className="h-5 w-5" />
       </button>
 
       <div className="hidden min-w-0 md:block">
-        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Campus Buddy</p>
-        <p className="truncate text-sm font-semibold text-muted-foreground">MIT Academy of Engineering workspace</p>
+        <p className="text-sm font-semibold text-foreground">Campus Buddy</p>
+        <p className="truncate text-xs text-muted-foreground">MIT Academy of Engineering workspace</p>
       </div>
 
       <div className="flex-1" />
@@ -51,7 +51,7 @@ export default function Navbar({ user }: { user: UserType | null }) {
       <button
         onClick={toggleTheme}
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        className="interactive-control flex h-10 w-10 items-center justify-center rounded-xl text-muted-foreground transition hover:-translate-y-0.5 hover:bg-accent hover:text-foreground"
+        className="interactive-control flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:bg-accent hover:text-foreground"
       >
         {theme === 'dark'
           ? <Sun  className="h-4.5 w-4.5" />
@@ -65,17 +65,17 @@ export default function Navbar({ user }: { user: UserType | null }) {
       {/* User dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="interactive-control flex items-center gap-2.5 rounded-2xl border border-transparent px-2 py-1.5 outline-none transition hover:-translate-y-0.5 hover:border-border hover:bg-accent/70">
-            <Avatar className="h-9 w-9 ring-2 ring-primary/12">
+          <button className="interactive-control flex items-center gap-2 border border-transparent px-2 py-1 outline-none transition hover:border-border hover:bg-accent">
+            <Avatar className="h-8 w-8">
               <AvatarImage src={user.avatar_url} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+              <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
                 {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
             <div className="text-left hidden sm:block">
-              <p className="text-sm font-bold leading-tight text-foreground">{user.name}</p>
+              <p className="text-sm font-medium leading-tight text-foreground">{user.name}</p>
               <span className={cn(
-                'text-[10px] px-1.5 py-0.5 rounded-full font-semibold border',
+                'text-[10px] px-1.5 py-0.5 font-medium border',
                 getRoleBadgeColor(user.role)
               )}>
                 {user.role}

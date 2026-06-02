@@ -17,6 +17,22 @@ export default async function ChannelPage({ params }: { params: Promise<{ id: st
 
   if (!channel) notFound()
 
+  // Access control
+  if (profile && !['admin', 'professor', 'cr'].includes(profile.role)) {
+    if (channel.type === 'academic' || channel.type === 'subject') {
+      if (channel.year !== profile.year) notFound()
+    } else if (channel.is_private) {
+      // Check membership
+      const { data: member } = await supabase
+        .from('channel_members')
+        .select('id')
+        .eq('channel_id', id)
+        .eq('user_id', user.id)
+        .single()
+      if (!member) notFound()
+    }
+  }
+
   return (
     <ChannelPageClient
       channel={channel}

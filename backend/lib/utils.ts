@@ -43,8 +43,10 @@ export function getRoleBadgeColor(role: string): string {
   switch (role) {
     case 'admin':
       return 'bg-red-100 text-red-700 border-red-200'
-    case 'teacher':
+    case 'professor':
       return 'bg-amber-100 text-amber-700 border-amber-200'
+    case 'cr':
+      return 'bg-indigo-100 text-indigo-700 border-indigo-200'
     default:
       return 'bg-blue-100 text-blue-700 border-blue-200'
   }
