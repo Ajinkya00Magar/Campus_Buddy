@@ -1,4 +1,4 @@
-# 🎓 Campus Buddy
+# 🎓 Campus Buddy.
 
 **A centralized, real-time campus platform for MIT Academy of Engineering**
 
