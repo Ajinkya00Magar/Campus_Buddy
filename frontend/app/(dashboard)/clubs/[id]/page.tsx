@@ -9,20 +9,25 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
+  const profileRes = await supabase.from('users').select('role').eq('id', user.id).single()
+  const userRole = profileRes.data?.role ?? 'student'
+
   const officialClub = getMitaoeClub(id)
   if (officialClub) {
     return (
       <ClubDetailClient
         club={officialClub}
-        isMember={false}
         userId={user.id}
+        userRole={userRole}
+        membershipRole={null}
+        isOfficialSeed
       />
     )
   }
 
   const [{ data: club }, { data: membership }] = await Promise.all([
     supabase.from('clubs').select('*, club_members(count, users(name, avatar_url, role))').eq('id', id).single(),
-    supabase.from('club_members').select('id').eq('club_id', id).eq('user_id', user.id).maybeSingle(),
+    supabase.from('club_members').select('role').eq('club_id', id).eq('user_id', user.id).maybeSingle(),
   ])
 
   if (!club) notFound()
@@ -30,8 +35,10 @@ export default async function ClubDetailPage({ params }: { params: Promise<{ id:
   return (
     <ClubDetailClient
       club={{ ...club, _members_count: club.club_members?.[0]?.count ?? 0 }}
-      isMember={!!membership}
       userId={user.id}
+      userRole={userRole}
+      membershipRole={membership?.role ?? null}
+      isOfficialSeed={false}
     />
   )
 }
