@@ -1,8 +1,10 @@
 # Production Task List
 
-> Use the checkboxes to track progress. Click a box in a markdown editor or GitHub to mark a task complete.
+> Note: This is a static Markdown task tracker. The checkboxes work in editors or GitHub by editing the file, but there is no live "Add task" button or automated script in this file.
 
-[➕ Add task](#add-task)
+## How to use
+- To mark a task complete, change `- [ ]` to `- [x]`.
+- To add a task, insert a new unchecked line in the appropriate section.
 
 ## Clubs
 - [ ] Finish admin-only club member management and president role assignment
