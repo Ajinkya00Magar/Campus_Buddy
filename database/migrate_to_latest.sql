@@ -56,18 +56,6 @@ CREATE POLICY "channel_members_manage" ON public.channel_members FOR ALL USING (
 DROP POLICY IF EXISTS "messages_update" ON public.messages;
 CREATE POLICY "messages_update" ON public.messages FOR UPDATE USING (auth.uid() = sender_id OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'professor', 'cr')));
 
--- Poll vote permissions (required for upsert on poll_votes)
-ALTER TABLE public.poll_votes ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "votes_read" ON public.poll_votes;
-CREATE POLICY "votes_read" ON public.poll_votes FOR SELECT USING (TRUE);
-
-DROP POLICY IF EXISTS "votes_insert" ON public.poll_votes;
-CREATE POLICY "votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "votes_update" ON public.poll_votes;
-CREATE POLICY "votes_update" ON public.poll_votes FOR UPDATE USING (auth.uid() = user_id);
-
 -- 5. Storage Buckets (Avatars and Files)
 INSERT INTO storage.buckets (id, name, public) VALUES ('channel-files', 'channel-files', true) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT (id) DO NOTHING;

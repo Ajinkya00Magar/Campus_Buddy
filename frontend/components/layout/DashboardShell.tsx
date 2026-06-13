@@ -13,8 +13,6 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
   const { isOpen, close } = useSidebar()
   const pathname = usePathname()
   const isChannelPage = pathname.startsWith('/channels/')
-  const isEmbeddedResourcePage = pathname === '/notes' || pathname === '/pyqs'
-  const isFullBleedPage = isChannelPage || isEmbeddedResourcePage
   
   // Realtime channels for the sidebar
   const channels = useChannels(initialChannels, user)
