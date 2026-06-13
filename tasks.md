@@ -8,34 +8,39 @@
 
 * To add a task, insert a new unchecked line in the appropriate section.
 
+## DEV. Assigned Tasks
+* [ ] TASK 01
+* [ ] TASK 02
+* [ ] TASK 03
+
 ## Communication & Channels
 
 * [ ] Finalize department-wise, year-wise, and division-wise channel architecture
 * [ ] Create subject-specific channels for every semester
 * [ ] Add dedicated placement, notices, and academic announcement channels
-* [ ] Implement message reply functionality
+* [x] Implement message reply functionality
 * [ ] Add edit and delete message support
 * [ ] Implement unread message count per channel
 * [ ] Add @mention support for users
 * [ ] Implement pinned messages
-* [ ] Add announcement mode (teacher/admin only)
+* [  ] Add announcement mode (teacher/admin only)
 * [ ] Implement threaded replies for organized discussions
 * [ ] Create channel file repository for uploaded PDFs and images
 * [ ] Add message search functionality
 * [ ] Add starred messages feature
-* [ ] Add emoji reactions to messages
+* [x] Add emoji reactions to messages
 
 ## Academic Learning Module
 
-* [ ] Build dedicated Learning / Courses section
+* [x] Build dedicated Learning / Courses section
 * [ ] Curate first-year engineering bridge courses
 * [ ] Add Programming Fundamentals learning module
 * [ ] Add Engineering Mathematics learning resources
 * [ ] Add Physics and Electronics fundamentals module
 * [ ] Implement student course progress tracking
-* [ ] Design and implement automated certificate generation
+* [x] Design and implement automated certificate generation
 * [ ] Add digital badge system for completed courses
-* [ ] Implement certificate PDF download and verification
+* [x] Implement certificate PDF download and verification
 
 ## Events & Clubs
 
@@ -45,12 +50,12 @@
 * [ ] Finalize official clubs section with achievements and gallery
 * [ ] Add club recruitment and joining workflow
 * [ ] Display club event history and activity timeline
-* [ ] Integrate official college club information and assets
+* [x] Integrate official college club information and assets
 
 ## Administration
 
-* [ ] Complete role-based access control (Student / Teacher / Admin)
-* [ ] Create admin dashboard for platform management
+* [x] Complete role-based access control (Student / Teacher / Admin)
+* [x] Create admin dashboard for platform management
 * [ ] Add admin controls for channels, events, clubs, and courses
 * [ ] Implement user and role management
 * [ ] Restrict announcement publishing to faculty/admin accounts
