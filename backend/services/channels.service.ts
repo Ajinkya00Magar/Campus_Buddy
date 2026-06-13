@@ -261,13 +261,15 @@ export async function voteOnPoll(
   optionIdx: number
 ) {
   const supabase = createClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('poll_votes')
     .upsert(
       { poll_id: pollId, user_id: userId, option_idx: optionIdx },
       { onConflict: 'poll_id,user_id' }
     )
-  return { error }
+    .select()
+    .single()
+  return { data, error }
 }
 
 export async function getChannelStats(channelId: string): Promise<ChannelStats> {

@@ -275,6 +275,16 @@ CREATE POLICY "reactions_delete" ON public.message_reactions FOR DELETE USING (a
 CREATE POLICY "polls_read"   ON public.polls FOR SELECT USING (TRUE);
 CREATE POLICY "polls_insert" ON public.polls FOR INSERT WITH CHECK (auth.uid() = created_by);
 
+-- POLL VOTES
+CREATE POLICY "votes_read"   ON public.poll_votes FOR SELECT USING (TRUE);
+CREATE POLICY "votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "votes_update" ON public.poll_votes FOR UPDATE USING (auth.uid() = user_id);
+
+-- POLL VOTES
+CREATE POLICY "votes_read"   ON public.poll_votes FOR SELECT USING (TRUE);
+CREATE POLICY "votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "votes_update" ON public.poll_votes FOR UPDATE USING (auth.uid() = user_id);
+
 -- ============================================================
 -- 4. STORAGE SETUP
 -- ============================================================

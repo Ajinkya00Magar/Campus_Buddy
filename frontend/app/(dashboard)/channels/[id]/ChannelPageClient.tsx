@@ -430,9 +430,34 @@ export default function ChannelPageClient({
 
   const handleVote = async (pollId: string, optionIdx: number) => {
     if (!currentUser) return
+
+    setPolls((prev) =>
+      prev.map((poll) => {
+        if (poll.id !== pollId) return poll
+        const votes = poll.poll_votes ?? []
+        const existing = votes.find((vote) => vote.user_id === currentUser.id)
+        const nextVotes = existing
+          ? votes.map((vote) =>
+              vote.user_id === currentUser.id ? { ...vote, option_idx: optionIdx } : vote
+            )
+          : [
+              ...votes,
+              {
+                id: `pending-${Date.now()}`,
+                poll_id: pollId,
+                user_id: currentUser.id,
+                option_idx: optionIdx,
+                voted_at: new Date().toISOString(),
+              },
+            ]
+        return { ...poll, poll_votes: nextVotes }
+      })
+    )
+
     const { error } = await voteOnPoll(pollId, currentUser.id, optionIdx)
     if (error) {
       toast({ title: 'Vote failed', description: error.message, variant: 'destructive' })
+      setPolls((await getChannelPolls(channel.id)) as Poll[])
       return
     }
     setPolls((await getChannelPolls(channel.id)) as Poll[])

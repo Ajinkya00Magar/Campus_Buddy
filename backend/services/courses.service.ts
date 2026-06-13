@@ -1,5 +1,11 @@
 import { createClient } from '@/lib/supabase/client'
-import type { Course, CourseModule, CourseProgress } from '@/types'
+import type { Course, CourseModule, CourseLearningStatus, CourseProgress, CourseLearningStatusValue } from '@/types'
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export function isDatabaseCourseId(courseId: string) {
+  return uuidPattern.test(courseId)
+}
 
 export async function getCourses(): Promise<Course[]> {
   const supabase = createClient()
@@ -82,6 +88,8 @@ export async function checkCourseComplete(
 }
 
 export async function awardCourseCompletion(userId: string, courseId: string) {
+  if (!isDatabaseCourseId(courseId)) return { error: null }
+
   const supabase = createClient()
   const { error } = await supabase.from('course_completions').upsert(
     { user_id: userId, course_id: courseId, completed_at: new Date().toISOString() },
@@ -102,6 +110,42 @@ export async function isCourseCompleted(
     .eq('course_id', courseId)
     .maybeSingle()
   return !!data
+}
+
+export async function saveCourseLearningStatus(payload: {
+  user_id: string
+  course_id: string
+  course_title: string
+  provider?: string
+  status: CourseLearningStatusValue
+  progress_percent: number
+  completed_at?: string
+}) {
+  const supabase = createClient()
+  const normalizedProgress = Math.max(0, Math.min(100, Math.round(payload.progress_percent)))
+  const completedAt = payload.status === 'completed'
+    ? payload.completed_at ?? new Date().toISOString()
+    : null
+
+  const { data, error } = await supabase
+    .from('course_learning_status')
+    .upsert(
+      {
+        user_id: payload.user_id,
+        course_id: payload.course_id,
+        course_title: payload.course_title,
+        provider: payload.provider,
+        status: payload.status,
+        progress_percent: normalizedProgress,
+        completed_at: completedAt,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,course_id' }
+    )
+    .select()
+    .maybeSingle()
+
+  return { data: data as CourseLearningStatus | null, error }
 }
 
 export async function getAllCourses(): Promise<Course[]> {

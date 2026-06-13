@@ -13,6 +13,8 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
   const { isOpen, close } = useSidebar()
   const pathname = usePathname()
   const isChannelPage = pathname.startsWith('/channels/')
+  const isEmbeddedResourcePage = pathname === '/notes' || pathname === '/pyqs'
+  const isFullBleedPage = isChannelPage || isEmbeddedResourcePage
   
   // Realtime channels for the sidebar
   const channels = useChannels(initialChannels, user)
@@ -32,7 +34,7 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
         <Navbar user={user} />
         <main className={cn(
           "flex-1 overflow-hidden",
-          isChannelPage ? "p-0" : "overflow-y-auto p-3 md:p-4"
+          isFullBleedPage ? "p-0" : "overflow-y-auto p-3 md:p-4"
         )}>
           {children}
         </main>

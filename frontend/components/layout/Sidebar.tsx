@@ -18,16 +18,21 @@ const navItems = [
   { href: '/events',        label: 'Events',        icon: Calendar },
   { href: '/clubs',         label: 'Clubs',         icon: Users2 },
   { href: '/courses',       label: 'Courses',       icon: BookOpen },
-  { href: 'https://mitaoe-pyqs.vercel.app/', label: 'PYQs', icon: Archive, external: true },
-  { href: 'https://mitaoe-notes.vercel.app/', label: 'Notes', icon: FileText, external: true },
+  { href: '/pyqs',  label: 'PYQs',  icon: Archive },
+  { href: '/notes', label: 'Notes', icon: FileText },
   { href: '/notifications', label: 'Notifications', icon: Bell },
 ]
 const adminItems = [{ href: '/admin', label: 'Admin Panel', icon: Shield }]
+const courseManagerItems = [{ href: '/admin/courses', label: 'Manage Courses', icon: BookOpen }]
 
 export default function Sidebar({ role, channels = [] }: { role: UserRole, channels?: Channel[] }) {
   const pathname = usePathname()
   const { isOpen, toggle, close } = useSidebar()
-  const items = role === 'admin' ? [...navItems, ...adminItems] : navItems
+  const items = role === 'admin'
+    ? [...navItems, ...adminItems]
+    : ['professor', 'cr'].includes(role)
+      ? [...navItems, ...courseManagerItems]
+      : navItems
 
   return (
     <>

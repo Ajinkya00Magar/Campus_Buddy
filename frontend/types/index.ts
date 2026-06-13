@@ -95,6 +95,20 @@ export interface CourseCompletion {
   completed_at: string
 }
 
+export type CourseLearningStatusValue = 'not_started' | 'ongoing' | 'completed'
+
+export interface CourseLearningStatus {
+  id?: string
+  user_id: string
+  course_id: string
+  course_title: string
+  provider?: string
+  status: CourseLearningStatusValue
+  progress_percent: number
+  completed_at?: string
+  updated_at?: string
+}
+
 export interface Channel {
   id: string
   name: string
