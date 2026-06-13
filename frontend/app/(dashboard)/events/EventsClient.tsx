@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Calendar, MapPin, Users, Plus, Search, Sparkles } from 'lucide-react'
 import { formatEventDate } from '@/lib/utils'
+import { useEvents } from '@/hooks/useEvents'
 import type { Event, UserRole } from '@/types'
 
 const CATEGORIES = ['all', 'technical', 'cultural', 'sports', 'academic', 'placement', 'general']
@@ -22,12 +23,13 @@ const catColors: Record<string, string> = {
 }
 
 export default function EventsClient({
-  events, userRole, userId
+  events: initialEvents, userRole, userId
 }: {
   events: Event[]
   userRole: UserRole
   userId: string
 }) {
+  const events = useEvents(initialEvents)
   const [category, setCategory] = useState('all')
   const [search, setSearch] = useState('')
 

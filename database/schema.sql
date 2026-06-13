@@ -275,6 +275,16 @@ CREATE POLICY "reactions_delete" ON public.message_reactions FOR DELETE USING (a
 CREATE POLICY "polls_read"   ON public.polls FOR SELECT USING (TRUE);
 CREATE POLICY "polls_insert" ON public.polls FOR INSERT WITH CHECK (auth.uid() = created_by);
 
+-- POLL VOTES
+CREATE POLICY "votes_read"   ON public.poll_votes FOR SELECT USING (TRUE);
+CREATE POLICY "votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "votes_update" ON public.poll_votes FOR UPDATE USING (auth.uid() = user_id);
+
+-- POLL VOTES
+CREATE POLICY "votes_read"   ON public.poll_votes FOR SELECT USING (TRUE);
+CREATE POLICY "votes_insert" ON public.poll_votes FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "votes_update" ON public.poll_votes FOR UPDATE USING (auth.uid() = user_id);
+
 -- ============================================================
 -- 4. STORAGE SETUP
 -- ============================================================
@@ -331,12 +341,21 @@ CREATE TRIGGER on_auth_user_created
 ALTER TABLE public.messages         REPLICA IDENTITY FULL;
 ALTER TABLE public.message_reactions REPLICA IDENTITY FULL;
 ALTER TABLE public.poll_votes        REPLICA IDENTITY FULL;
+ALTER TABLE public.channels          REPLICA IDENTITY FULL;
+ALTER TABLE public.events            REPLICA IDENTITY FULL;
 
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.message_reactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.poll_votes;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.polls;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.channels;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.events;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.event_participants;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.clubs;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.club_members;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.courses;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
 
 -- ============================================================
 -- 7. SEED DATA

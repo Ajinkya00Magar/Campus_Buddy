@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { joinClub, leaveClub } from '@/services/clubs.service'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { Users2, Trophy, Link as LinkIcon, ArrowLeft, UserPlus, UserMinus } from
 import { getInitials } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
+import { isLocalClubMember, removeLocalClubMembership, saveLocalClubMembership } from '@/utils/localClubMemberships'
 
 export default function ClubDetailClient({
   club, isMember: initialMember, userId
@@ -21,6 +22,12 @@ export default function ClubDetailClient({
   const [isMember, setIsMember] = useState(initialMember)
   const [memberCount, setMemberCount] = useState(club._members_count ?? 0)
   const [loading, setLoading] = useState(false)
+  const isOfficialSeed = !!club.is_official_seed
+
+  useEffect(() => {
+    if (!isOfficialSeed) return
+    setIsMember(isLocalClubMember(userId, club.id))
+  }, [club.id, isOfficialSeed, userId])
 
   const members = club.club_members?.flatMap((m: any) =>
     m.users ? [m.users] : []
@@ -28,6 +35,22 @@ export default function ClubDetailClient({
 
   const handleJoinLeave = async () => {
     setLoading(true)
+    if (isOfficialSeed) {
+      if (isMember) {
+        removeLocalClubMembership(userId, club.id)
+        setIsMember(false)
+        setMemberCount((c: number) => Math.max(0, c - 1))
+        toast({ title: 'Left club' })
+      } else {
+        saveLocalClubMembership(userId, club.id)
+        setIsMember(true)
+        setMemberCount((c: number) => c + 1)
+        toast({ title: 'Joined club!' })
+      }
+      setLoading(false)
+      return
+    }
+
     if (isMember) {
       const { error } = await leaveClub(club.id, userId)
       if (!error) {
@@ -77,6 +100,7 @@ export default function ClubDetailClient({
               {club.category && <span className="capitalize">{club.category}</span>}
               <span>·</span>
               <span className="flex items-center gap-1"><Users2 className="h-3.5 w-3.5" />{memberCount} members</span>
+              {isOfficialSeed && <span>Official MITAOE</span>}
             </div>
           </div>
         </div>

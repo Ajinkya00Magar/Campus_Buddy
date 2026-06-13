@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { Hash, Plus, Trash2, ArrowLeft, Users, X, Search, Loader2, Lock, Unlock } from 'lucide-react'
 import Link from 'next/link'
+import { useChannels } from '@/hooks/useChannels'
 import type { Channel, User } from '@/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
@@ -22,8 +23,13 @@ export default function AdminChannelsPage() {
   const { toast } = useToast()
   const router = useRouter()
   
-  const [channels, setChannels] = useState<Channel[]>([])
+  const [initialChannels, setInitialChannels] = useState<Channel[]>([])
   const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<User | null>(null)
+  
+  // Realtime state management via hook
+  const channels = useChannels(initialChannels, profile)
+
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ 
     name: '', 
@@ -41,12 +47,13 @@ export default function AdminChannelsPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       
-      const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+      const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
       if (profile?.role !== 'admin') { router.push('/dashboard'); return }
       
+      setProfile(profile)
       setUserId(user.id)
       const { data: chs } = await supabase.from('channels').select('*').order('type').order('name')
-      setChannels(chs ?? [])
+      setInitialChannels(chs ?? [])
       setLoading(false)
     }
     checkAdmin()
@@ -59,7 +66,7 @@ export default function AdminChannelsPage() {
     if (err) { toast({ title: err, variant: 'destructive' }); return }
     
     setCreating(true)
-    const { data, error } = await createChannel({
+    const { error } = await createChannel({
       name: form.name.toLowerCase().replace(/\s+/g, '-'),
       description: form.description || undefined,
       type: form.type as any,
@@ -75,8 +82,7 @@ export default function AdminChannelsPage() {
       return
     }
 
-    const { data: updatedChannels } = await supabase.from('channels').select('*').order('type').order('name')
-    setChannels(updatedChannels ?? [])
+    // No need to manually refresh state, useChannels hook will catch the INSERT event
     setForm({ name: '', description: '', type: 'academic', department: '', year: 'none', is_private: false })
     setCreating(false)
     toast({ title: 'Channel created successfully!' })
@@ -91,15 +97,15 @@ export default function AdminChannelsPage() {
       return 
     }
     
-    setChannels(prev => prev.filter(c => c.id !== id))
+    // No need to manually filter state, useChannels hook will catch the DELETE event
     toast({ title: 'Channel deleted' })
   }
 
   const typeColors: Record<string, string> = {
     academic: 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20',
-    subject: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-900/20',
-    club: 'text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-900/20',
-    official: 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20',
+    subject: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-blue-900/20',
+    club: 'text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-blue-900/20',
+    official: 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-blue-900/20',
   }
 
   if (loading) {

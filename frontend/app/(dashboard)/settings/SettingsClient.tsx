@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useTheme } from '@/components/layout/ThemeContext'
@@ -12,6 +12,8 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { uploadAvatar, deleteAvatar } from '@/services/channels.service'
+import { generateCourseCertificate } from '@/utils/courseCertificates'
+import { getLocalCourseCompletions, type LocalCourseCompletion } from '@/utils/localCourseCompletions'
 import {
   Sun, Moon, User, BookOpen, Users2,
   Trophy, LogOut, Shield, Mail, Pencil, Check, X, Camera, Loader2, Trash2
@@ -39,6 +41,45 @@ export default function SettingsClient({
   const [name, setName]       = useState(profile?.name ?? '')
   const [saving, setSaving]   = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [localCompletions, setLocalCompletions] = useState<LocalCourseCompletion[]>([])
+
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const loadLocalCompletions = () => {
+      setLocalCompletions(getLocalCourseCompletions(profile.id))
+    }
+
+    loadLocalCompletions()
+    window.addEventListener('campus-buddy:course-completions-changed', loadLocalCompletions)
+    window.addEventListener('storage', loadLocalCompletions)
+
+    return () => {
+      window.removeEventListener('campus-buddy:course-completions-changed', loadLocalCompletions)
+      window.removeEventListener('storage', loadLocalCompletions)
+    }
+  }, [profile?.id])
+
+  const completedCourses = useMemo(() => {
+    const normalizedDbCompletions = completions.map((completion: any) => {
+      const courseTitle = Array.isArray(completion.courses)
+        ? completion.courses[0]?.title
+        : completion.courses?.title
+
+      return {
+        course_id: completion.course_id,
+        title: courseTitle ?? 'Completed Course',
+        completed_at: completion.completed_at,
+      }
+    })
+
+    const byId = new Map<string, LocalCourseCompletion>()
+    for (const completion of [...normalizedDbCompletions, ...localCompletions]) {
+      byId.set(completion.course_id, completion)
+    }
+
+    return Array.from(byId.values())
+  }, [completions, localCompletions])
 
   const handleSaveName = async () => {
     if (!name.trim() || !profile) return
@@ -91,6 +132,19 @@ export default function SettingsClient({
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  const handleGenerateCertificate = (completion: LocalCourseCompletion) => {
+    if (!profile) return
+
+    generateCourseCertificate({
+      courseId: completion.course_id,
+      courseTitle: completion.title,
+      userId: profile.id,
+      userName: profile.name,
+      completedAt: completion.completed_at,
+    })
+    toast({ title: 'Certificate generated', description: 'Your certificate has been downloaded.' })
   }
 
   const themeOptions: { value: ThemeOption; label: string; icon: React.ElementType }[] = [
@@ -220,9 +274,9 @@ export default function SettingsClient({
           {/* Stats row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
             {[
-              { label: 'Courses Done', value: completions.length, icon: BookOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+              { label: 'Courses Done', value: completedCourses.length, icon: BookOpen, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
               { label: 'Clubs Joined', value: clubMemberships.length, icon: Users2, color: 'text-violet-500', bg: 'bg-violet-500/10' },
-              { label: 'Badges Earned', value: completions.length, icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+              { label: 'Badges Earned', value: completedCourses.length, icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500/10' },
             ].map(({ label, value, icon: Icon, color, bg }) => (
               <div key={label} className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border transition-all hover:shadow-sm">
                 <div className={cn('flex h-10 w-10 items-center justify-center rounded-xl shrink-0', bg)}>
@@ -237,6 +291,36 @@ export default function SettingsClient({
           </div>
         </CardContent>
       </Card>
+
+      {completedCourses.length > 0 && (
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-4 border-b border-border">
+            <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground uppercase tracking-widest">
+              <Trophy className="h-4 w-4 text-amber-500" /> Course Certificates
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pt-6">
+            {completedCourses.map((completion) => (
+              <div key={completion.course_id} className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-foreground">{completion.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Completed on {new Date(completion.completed_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => handleGenerateCertificate(completion)}
+                  className="shrink-0 bg-amber-500 text-white hover:bg-amber-600"
+                >
+                  <Trophy className="h-3.5 w-3.5" />
+                  Certificate
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Appearance ── */}
       <Card className="border-border bg-card">

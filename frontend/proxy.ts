@@ -38,6 +38,7 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
   const isAuthPage = pathname.startsWith('/login')
   const isAdminPage = pathname.startsWith('/admin')
+  const isCourseAdminPage = pathname.startsWith('/admin/courses')
 
   // Redirect unauthenticated users to login
   if (!user && !isAuthPage) {
@@ -61,7 +62,11 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    const canAccessAdminRoute = isCourseAdminPage
+      ? ['admin', 'professor', 'cr'].includes(profile?.role ?? '')
+      : profile?.role === 'admin'
+
+    if (!canAccessAdminRoute) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)

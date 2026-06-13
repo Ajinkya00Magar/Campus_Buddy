@@ -51,6 +51,16 @@ CREATE POLICY "reactions_delete" ON public.message_reactions
   FOR DELETE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "votes_read" ON public.poll_votes;
+CREATE POLICY "votes_read" ON public.poll_votes
+  FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "votes_insert" ON public.poll_votes;
+CREATE POLICY "votes_insert" ON public.poll_votes
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "votes_update" ON public.poll_votes;
 CREATE POLICY "votes_update" ON public.poll_votes
   FOR UPDATE

@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { BookOpen, Clock, Trophy, Layers, Sparkles } from 'lucide-react'
 import { getLevelColor } from '@/lib/utils'
+import { liveCourses } from '@/data/liveCourses'
 
 export default async function CoursesPage() {
   const supabase = await createClient()
@@ -22,10 +23,11 @@ export default async function CoursesPage() {
     progressMap[p.course_id] = (progressMap[p.course_id] ?? 0) + 1
   }
 
-  const mapped = (courses ?? []).map((c: any) => ({
+  const dbCourses = (courses ?? []).map((c: any) => ({
     ...c,
     _modules_count: c.course_modules?.[0]?.count ?? 0,
   }))
+  const mapped = [...liveCourses, ...dbCourses]
 
   return (
     <div className="mx-auto max-w-7xl space-y-7">
@@ -61,6 +63,7 @@ export default async function CoursesPage() {
             const completed = progressMap[course.id] ?? 0
             const total = course._modules_count
             const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+            const quizCount = course.quiz_questions?.length ?? 0
 
             return (
               <Link key={course.id} href={`/courses/${course.id}`}>
@@ -78,14 +81,24 @@ export default async function CoursesPage() {
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-1.5">
                         <h3 className="font-bold text-foreground group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors text-sm leading-snug">{course.title}</h3>
-                        {done && <Trophy className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />}
-                      </div>
-                      {course.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{course.description}</p>
-                      )}
+                      {done && <Trophy className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />}
                     </div>
+                    {course.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{course.description}</p>
+                    )}
+                  </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
+                      {course.provider && (
+                        <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px] font-semibold">
+                          Live
+                        </Badge>
+                      )}
+                      {quizCount > 0 && (
+                        <Badge variant="secondary" className="h-5 rounded-full px-2 text-[10px] font-semibold">
+                          MCQ
+                        </Badge>
+                      )}
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium capitalize ${getLevelColor(course.level)}`}>
                         {course.level}
                       </span>
@@ -95,7 +108,7 @@ export default async function CoursesPage() {
                         </span>
                       )}
                       <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <Layers className="h-2.5 w-2.5" />{total} modules
+                        <Layers className="h-2.5 w-2.5" />{quizCount > 0 ? `${quizCount} MCQs` : `${total} modules`}
                       </span>
                     </div>
 

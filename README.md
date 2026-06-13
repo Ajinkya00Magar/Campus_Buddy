@@ -1,4 +1,4 @@
-# 🎓 Campus Buddy
+# 🎓 Campus Buddy..
 
 **A centralized, real-time campus platform for MIT Academy of Engineering**
 
@@ -123,3 +123,4 @@ This project is optimized for **Vercel**.
 2. Connect repository to Vercel.
 3. Add Environment Variables.
 4. Update Supabase Auth URLs to your production domain.
+yo
