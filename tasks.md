@@ -32,4 +32,5 @@
 To add a new task, edit this file and add a new unchecked item under the appropriate section.
 
 Example:
-- [ ] New task description
+- [x] New task description
+
