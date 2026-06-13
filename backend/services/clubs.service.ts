@@ -41,6 +41,47 @@ export async function leaveClub(clubId: string, userId: string) {
   return { error }
 }
 
+export async function getClubMembers(clubId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('club_members')
+    .select('*, users(id, name, email, avatar_url, role)')
+    .eq('club_id', clubId)
+  return { data, error }
+}
+
+export async function addClubMember(clubId: string, userId: string, role: string = 'member') {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('club_members')
+    .upsert({ club_id: clubId, user_id: userId, role }, { onConflict: 'club_id,user_id' })
+    .select()
+    .single()
+  return { data, error }
+}
+
+export async function removeClubMember(clubId: string, userId: string) {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('club_members')
+    .delete()
+    .eq('club_id', clubId)
+    .eq('user_id', userId)
+  return { error }
+}
+
+export async function updateClubMemberRole(clubId: string, userId: string, role: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('club_members')
+    .update({ role })
+    .eq('club_id', clubId)
+    .eq('user_id', userId)
+    .select()
+    .single()
+  return { data, error }
+}
+
 export async function isClubMember(clubId: string, userId: string) {
   const supabase = createClient()
   const { data } = await supabase
