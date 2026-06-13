@@ -15,8 +15,8 @@ export default async function ClubsPage() {
   }))
 
   const clubMap = new Map<string, any>([
-    ...mitaoeClubs.map((club) => [club.id, club]),
-    ...dbClubs.map((club) => [club.id, club]),
+    ...(mitaoeClubs.map((club) => [club.id, club]) as [string, any][]),
+    ...(dbClubs.map((club) => [club.id, club]) as [string, any][]),
   ])
 
   const mapped = Array.from(clubMap.values()).sort((a, b) => a.name.localeCompare(b.name))
