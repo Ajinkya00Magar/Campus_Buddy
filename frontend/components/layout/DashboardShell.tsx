@@ -28,7 +28,7 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
         />
       )}
 
-      <Sidebar role={user?.role ?? 'student'} channels={channels} />
+      <Sidebar role={user?.role ?? 'student'} channels={channels} userId={user?.id} />
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar user={user} />

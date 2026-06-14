@@ -8,6 +8,7 @@ import { useMessages } from '@/hooks/useMessages'
 import {
   createPoll,
   deleteMessage,
+  getChannelMembers,
   getChannelPolls,
   getChannelStats,
   getMessageReactions,
@@ -17,6 +18,7 @@ import {
   updateMessage,
   uploadFile,
   voteOnPoll,
+  updateChannelMemberPrefs,
 } from '@/services/channels.service'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -183,6 +185,11 @@ export default function ChannelPageClient({
   const [pollQuestion, setPollQuestion] = useState('')
   const [pollOptions, setPollOptions] = useState(['', ''])
   const [creatingPoll, setCreatingPoll] = useState(false)
+  const [isMuted, setIsMuted] = useState(false)
+  const [channelMembers, setChannelMembers] = useState<any[]>([])
+  const [mentionQuery, setMentionQuery] = useState<{ query: string, startIdx: number } | null>(null)
+  const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0)
+
   const documentRef = useRef<HTMLInputElement>(null)
   const mediaRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
@@ -229,6 +236,23 @@ export default function ChannelPageClient({
   const docItems = useMemo(() => messages.filter((message) => message.file_url && ['document', 'office', 'pdf'].includes(getFileKind(message.file_name ?? '', message.file_url))), [messages])
   const linkItems = useMemo(() => messages.flatMap((message) => extractLinks(message.content ?? '').map((url) => ({ url, message }))), [messages])
 
+  const mentionSuggestions = useMemo(() => {
+    if (!mentionQuery) return []
+    const query = mentionQuery.query.toLowerCase()
+    
+    // Add "everyone" pseudo-user
+    const everyoneObj = { users: { id: 'everyone', name: 'everyone', role: 'system', avatar_url: null } }
+    
+    const candidates = [
+      everyoneObj,
+      ...channelMembers.filter(m => m.user_id !== currentUser?.id)
+    ]
+    
+    return candidates
+      .filter(m => m.users?.name?.toLowerCase().includes(query))
+      .slice(0, 10) // Limit to 10
+  }, [mentionQuery, channelMembers, currentUser?.id])
+
   useEffect(() => {
     if (!currentUser) return
     const stored = window.localStorage.getItem(starredStorageKey(channel.id, currentUser.id))
@@ -236,17 +260,32 @@ export default function ChannelPageClient({
   }, [channel.id, currentUser])
 
   useEffect(() => {
+    if (!currentUser) return
+    let active = true
+    const fetchMembership = async () => {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data } = await supabase.from('channel_members').select('muted').eq('channel_id', channel.id).eq('user_id', currentUser.id).maybeSingle()
+      if (active && data) setIsMuted(data.muted)
+    }
+    fetchMembership()
+    return () => { active = false }
+  }, [channel.id, currentUser])
+
+  useEffect(() => {
     let active = true
     const refresh = async () => {
-      const [nextReactions, nextPolls, nextStats] = await Promise.all([
+      const [nextReactions, nextPolls, nextStats, membersRes] = await Promise.all([
         getMessageReactions(channel.id),
         getChannelPolls(channel.id),
         getChannelStats(channel.id),
+        getChannelMembers(channel.id),
       ])
       if (!active) return
       setReactions(nextReactions)
       setPolls(nextPolls as Poll[])
       setStats(nextStats)
+      if (membersRes.data) setChannelMembers(membersRes.data)
     }
 
     refresh()
@@ -256,6 +295,22 @@ export default function ChannelPageClient({
       window.clearInterval(interval)
     }
   }, [channel.id, messages.length])
+
+  useEffect(() => {
+    if (!currentUser) return
+    const markRead = async () => {
+      await updateChannelMemberPrefs(channel.id, currentUser.id, { last_read_at: new Date().toISOString() })
+    }
+    // Small debounce to avoid spamming the database
+    const timeout = setTimeout(markRead, 1000)
+    return () => clearTimeout(timeout)
+  }, [channel.id, currentUser, messages.length])
+
+  const handleToggleMute = async (muted: boolean) => {
+    if (!currentUser) return
+    setIsMuted(muted)
+    await updateChannelMemberPrefs(channel.id, currentUser.id, { muted })
+  }
 
   const handleSend = async () => {
     const content = text.trim()
@@ -523,6 +578,85 @@ export default function ChannelPageClient({
     }, 0)
   }
 
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value
+    setText(val)
+
+    const cursor = e.target.selectionStart
+    const textBeforeCursor = val.slice(0, cursor)
+    
+    // Find the last @ before the cursor
+    const lastAtIdx = textBeforeCursor.lastIndexOf('@')
+    
+    if (lastAtIdx !== -1) {
+      // Check if it's preceded by a space or it's the start of the string
+      if (lastAtIdx === 0 || textBeforeCursor[lastAtIdx - 1] === ' ' || textBeforeCursor[lastAtIdx - 1] === '\n') {
+        const query = textBeforeCursor.slice(lastAtIdx + 1)
+        // Ensure no spaces in the query (only typing one word for the name)
+        if (!query.includes(' ')) {
+          setMentionQuery({ query, startIdx: lastAtIdx })
+          setMentionSelectedIndex(0)
+          return
+        }
+      }
+    }
+    
+    setMentionQuery(null)
+  }
+
+  const handleMentionSelect = (username: string) => {
+    if (!mentionQuery) return
+    
+    const before = text.slice(0, mentionQuery.startIdx)
+    const after = text.slice(mentionQuery.startIdx + mentionQuery.query.length + 1)
+    
+    const nextText = `${before}@${username} ${after}`
+    setText(nextText)
+    setMentionQuery(null)
+    
+    // Set focus back
+    window.setTimeout(() => {
+      if (messageInputRef.current) {
+        messageInputRef.current.focus()
+        const newCursor = mentionQuery.startIdx + username.length + 2 // +2 for @ and space
+        messageInputRef.current.setSelectionRange(newCursor, newCursor)
+      }
+    }, 0)
+  }
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionQuery && mentionSuggestions.length > 0) {
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setMentionSelectedIndex((prev) => (prev + 1) % mentionSuggestions.length)
+        return
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setMentionSelectedIndex((prev) => (prev - 1 + mentionSuggestions.length) % mentionSuggestions.length)
+        return
+      }
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        event.preventDefault()
+        const selected = mentionSuggestions[mentionSelectedIndex]
+        if (selected?.users?.name) {
+          handleMentionSelect(selected.users.name)
+        }
+        return
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setMentionQuery(null)
+        return
+      }
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      handleSend()
+    }
+  }
+
   const handleCreatePoll = async () => {
     if (!pollQuestion.trim() || !currentUser || creatingPoll) return
     const validOptions = pollOptions.map((option) => option.trim()).filter(Boolean)
@@ -781,20 +915,40 @@ export default function ChannelPageClient({
                   onSticker={() => handleUnavailableTool('Stickers')}
                 />
                 <EmojiPaletteMenu onSelect={handleEmojiInsert} />
-                <textarea
-                  ref={messageInputRef}
-                  className="min-h-[36px] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
-                  placeholder={editing ? 'Edit message' : `Message #${channel.name}`}
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                      event.preventDefault()
-                      handleSend()
-                    }
-                  }}
-                  rows={1}
-                />
+                <div className="relative flex-1">
+                  {mentionQuery && mentionSuggestions.length > 0 && (
+                    <div className="absolute bottom-full left-0 mb-1 w-64 overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in zoom-in-95 duration-100 z-50">
+                      <div className="max-h-[200px] overflow-y-auto p-1">
+                        {mentionSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={suggestion.user_id || 'everyone'}
+                            onClick={() => handleMentionSelect(suggestion.users?.name)}
+                            className={cn(
+                              "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors",
+                              idx === mentionSelectedIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"
+                            )}
+                          >
+                            <Avatar className="h-5 w-5 shrink-0">
+                              <AvatarImage src={suggestion.users?.avatar_url || ''} />
+                              <AvatarFallback className="text-[10px]">{getInitials(suggestion.users?.name || '?')}</AvatarFallback>
+                            </Avatar>
+                            <span className="truncate font-medium">{suggestion.users?.name}</span>
+                            {suggestion.users?.id === 'everyone' && <span className="ml-auto text-[10px] text-muted-foreground uppercase tracking-wider font-bold">All</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <textarea
+                    ref={messageInputRef}
+                    className="w-full min-h-[36px] resize-none bg-transparent px-2 py-2 text-sm leading-5 outline-none placeholder:text-muted-foreground"
+                    placeholder={editing ? 'Edit message' : `Message #${channel.name}`}
+                    value={text}
+                    onChange={handleTextChange}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                  />
+                </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={handleVoiceNote}
@@ -828,6 +982,8 @@ export default function ChannelPageClient({
               docItems={docItems}
               linkItems={linkItems}
               starredCount={starredIds.length}
+              isMuted={isMuted}
+              onToggleMute={handleToggleMute}
               onClose={() => setShowInfo(false)}
             />
           )}
