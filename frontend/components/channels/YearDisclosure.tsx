@@ -2,16 +2,10 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { ArrowRight, BookOpen, Hash, Layers3, Lock, Radio } from 'lucide-react'
+import { ArrowRight, BookOpen, Hash, Layers3, Lock, Megaphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isYearNoticeChannel, YEAR_LABELS } from '@/utils/channelVisibility'
 import type { Channel } from '@/types'
-
-const YEAR_LABELS: Record<number, string> = {
-  1: 'First Year',
-  2: 'Second Year',
-  3: 'Third Year',
-  4: 'Fourth Year',
-}
 
 const SUBJECTS_PER_SEMESTER = 8
 
@@ -24,6 +18,8 @@ interface YearDisclosureProps {
 export default function YearDisclosure({ year, channels, currentYear }: YearDisclosureProps) {
   const [open, setOpen] = useState(false)
   const yearChannels = channels.filter((channel) => channel.year === year)
+  const noticeChannel = yearChannels.find(isYearNoticeChannel)
+  const subjectChannels = yearChannels.filter((channel) => !isYearNoticeChannel(channel))
   const activeCount = yearChannels.length
 
   return (
@@ -73,6 +69,48 @@ export default function YearDisclosure({ year, channels, currentYear }: YearDisc
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                  {YEAR_LABELS[year]} Notices
+                </p>
+                <h3 className="mt-1 text-lg font-bold text-foreground">Official year notices</h3>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Megaphone className="h-5 w-5" />
+              </div>
+            </div>
+
+            {noticeChannel ? (
+              <Link
+                href={`/channels/${noticeChannel.id}`}
+                className="mb-5 block rounded-2xl border border-amber-200 bg-amber-50/70 p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg dark:border-amber-900/50 dark:bg-amber-950/20"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-lg shadow-amber-500/20">
+                    <Hash className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-bold text-foreground">#notices</p>
+                      {noticeChannel.is_private && <Lock className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                    </div>
+                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {noticeChannel.description || `${YEAR_LABELS[year]} Notices`}
+                    </p>
+                    <div className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                      Open notices
+                      <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ) : (
+              <div className="mb-5 rounded-2xl border border-dashed bg-muted/35 p-4 text-sm text-muted-foreground">
+                Notices channel not created yet.
+              </div>
+            )}
+
+            <div className="mb-4 flex items-center justify-between gap-3 border-t pt-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
                   Semester 01
                 </p>
                 <h3 className="mt-1 text-lg font-bold text-foreground">Subject channels</h3>
@@ -85,7 +123,7 @@ export default function YearDisclosure({ year, channels, currentYear }: YearDisc
             <div className="grid gap-3 sm:grid-cols-2">
               {Array.from({ length: SUBJECTS_PER_SEMESTER }, (_, index) => {
                 const subjectNumber = index + 1
-                const matchingChannel = yearChannels[index]
+                const matchingChannel = subjectChannels[index]
                 const title = matchingChannel?.description || matchingChannel?.name || `Subject ${String(subjectNumber).padStart(2, '0')}`
                 const meta = `Y${year} · Sem 01 · Subject ${String(subjectNumber).padStart(2, '0')}`
                 const card = (

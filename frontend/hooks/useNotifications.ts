@@ -11,6 +11,27 @@ export function useNotifications(userId: string | undefined) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        Notification.requestPermission()
+      }
+    }
+
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(
+        (registration) => {
+          console.log('Service Worker registration successful with scope: ', registration.scope);
+          // Future: Implement PushManager subscription here
+          // registration.pushManager.subscribe({ ... })
+        },
+        (err) => {
+          console.log('Service Worker registration failed: ', err);
+        }
+      );
+    }
+  }, [])
+
+  useEffect(() => {
     if (!userId) { setLoading(false); return }
 
     getNotifications(userId).then((data) => {
@@ -30,7 +51,15 @@ export function useNotifications(userId: string | undefined) {
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev])
+          const newNotif = payload.new as Notification
+          setNotifications((prev) => [newNotif, ...prev])
+          
+          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+            new Notification(newNotif.title, {
+              body: newNotif.body,
+              icon: '/icon.svg'
+            })
+          }
         }
       )
       .subscribe()

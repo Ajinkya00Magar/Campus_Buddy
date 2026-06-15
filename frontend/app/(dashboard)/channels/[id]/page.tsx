@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import ChannelPageClient from './ChannelPageClient'
+import { filterChannelsForUser, isYearChannel } from '@/utils/channelVisibility'
 
 // Next.js 15: params is a Promise
 export default async function ChannelPage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,7 +20,7 @@ export default async function ChannelPage({ params }: { params: Promise<{ id: st
 
   // Access control
   if (profile && !['admin', 'professor', 'cr'].includes(profile.role)) {
-    if (channel.type === 'academic' || channel.type === 'subject') {
+    if (isYearChannel(channel)) {
       if (channel.year !== profile.year) notFound()
     } else if (channel.is_private) {
       // Check membership
@@ -37,7 +38,7 @@ export default async function ChannelPage({ params }: { params: Promise<{ id: st
     <ChannelPageClient
       channel={channel}
       currentUser={profile}
-      allChannels={channels ?? []}
+      allChannels={filterChannelsForUser(channels ?? [], profile)}
     />
   )
 }

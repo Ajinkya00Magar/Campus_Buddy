@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { shouldShowChannelForUser } from '@/utils/channelVisibility'
 import type { Channel, User } from '@/types'
 
 export function useChannels(initialChannels: Channel[], profile: User | null) {
@@ -23,12 +24,12 @@ export function useChannels(initialChannels: Channel[], profile: User | null) {
           if (payload.eventType === 'INSERT') {
             const newChannel = payload.new as Channel
             // Apply filtering logic locally
-            if (shouldShowChannel(newChannel, profile)) {
+            if (shouldShowChannelForUser(newChannel, profile)) {
               setChannels((prev) => [...prev, newChannel].sort((a, b) => a.type.localeCompare(b.type) || a.name.localeCompare(b.name)))
             }
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as Channel
-            if (shouldShowChannel(updated, profile)) {
+            if (shouldShowChannelForUser(updated, profile)) {
               setChannels((prev) => prev.map((ch) => (ch.id === updated.id ? updated : ch)))
             } else {
               setChannels((prev) => prev.filter((ch) => ch.id !== updated.id))
@@ -46,24 +47,4 @@ export function useChannels(initialChannels: Channel[], profile: User | null) {
   }, [profile])
 
   return channels
-}
-
-function shouldShowChannel(ch: Channel, profile: User | null): boolean {
-  if (!profile) return false
-  
-  // Admin/Professor/CR see everything
-  if (['admin', 'professor', 'cr'].includes(profile.role)) return true
-  
-  // Official channels are visible to everyone
-  if (ch.type === 'official') return true
-  
-  // Academic/Subject channels are visible if year matches
-  if (ch.type === 'academic' || ch.type === 'subject') {
-    return ch.year === profile.year
-  }
-  
-  // Private channels are hidden (RLS handles fetch, but we filter here for safety)
-  if (ch.is_private) return false
-
-  return true
 }

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import DashboardShell from '@/components/layout/DashboardShell'
+import { filterChannelsForUser } from '@/utils/channelVisibility'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -13,18 +14,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     supabase.from('channels').select('*').order('type').order('name'),
   ])
 
-  // Year-based filtering for students
-  const filteredChannels = (channels ?? []).filter((ch) => {
-    if (!profile) return false
-    if (['admin', 'professor', 'cr'].includes(profile.role)) return true
-    
-    // Students only see their year for curriculum
-    if (ch.type === 'academic' || ch.type === 'subject') {
-      return ch.year === profile.year
-    }
-    
-    return true // Official/Public Clubs already handled by RLS
-  })
+  const filteredChannels = filterChannelsForUser(channels ?? [], profile)
 
   return <DashboardShell user={profile} channels={filteredChannels}>{children}</DashboardShell>
 }

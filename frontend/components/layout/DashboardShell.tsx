@@ -14,7 +14,8 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
   const pathname = usePathname()
   const isChannelPage = pathname.startsWith('/channels/')
   const isEmbeddedResourcePage = pathname === '/notes' || pathname === '/pyqs'
-  const isFullBleedPage = isChannelPage || isEmbeddedResourcePage
+  const isCourseDetailPage = pathname.startsWith('/courses/')
+  const isFullBleedPage = isChannelPage || isEmbeddedResourcePage || isCourseDetailPage
   
   // Realtime channels for the sidebar
   const channels = useChannels(initialChannels, user)
@@ -28,7 +29,7 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
         />
       )}
 
-      <Sidebar role={user?.role ?? 'student'} channels={channels} />
+      <Sidebar role={user?.role ?? 'student'} channels={channels} userId={user?.id} />
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar user={user} />
