@@ -97,9 +97,6 @@ function SidebarInner({
     .filter((group) => group.channels.length > 0)
   const clubs = sidebarChannels.filter(c => c.type === 'club')
 
-  // Calculate total unread channels count for the Channels nav item
-  const totalUnread = channels.reduce((acc, ch) => acc + (unreadCounts[ch.id] ? 1 : 0), 0)
-
   return (
     <div className="flex flex-col h-full">
       {/* Brand row */}
