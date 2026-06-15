@@ -46,6 +46,59 @@ export async function sendMessage(payload: {
     .insert(payload)
     .select('*, users(name, avatar_url, role)')
     .single()
+
+  if (data && payload.content) {
+    // Parse @mentions (e.g. @UserName)
+    const mentions = payload.content.match(/@(\w+)/g)
+    if (mentions && mentions.length > 0) {
+      // Get all users in the channel to match names to IDs
+      const { data: members } = await supabase
+        .from('channel_members')
+        .select('user_id, users(name)')
+        .eq('channel_id', payload.channel_id)
+
+      if (members) {
+        const uniqueMentions = Array.from(new Set(mentions.map(m => m.slice(1).toLowerCase())))
+        const isEveryone = uniqueMentions.includes('everyone')
+        
+        const notificationsToInsert = []
+
+        if (isEveryone) {
+          // Notify everyone in the channel except the sender
+          for (const member of members) {
+            if (member.user_id !== payload.sender_id) {
+              notificationsToInsert.push({
+                user_id: member.user_id,
+                title: 'Channel Announcement',
+                body: `${data.users?.name || 'Someone'} mentioned @everyone: "${payload.content.substring(0, 50)}${payload.content.length > 50 ? '...' : ''}"`,
+                type: 'info',
+                link: `/channels/${payload.channel_id}`
+              })
+            }
+          }
+        } else {
+          // For each specifically mentioned user, create a notification
+          for (const mention of uniqueMentions) {
+            const mentionedMember = members.find((m: any) => m.users?.name?.toLowerCase() === mention)
+            if (mentionedMember && mentionedMember.user_id !== payload.sender_id) {
+              notificationsToInsert.push({
+                user_id: mentionedMember.user_id,
+                title: 'New Mention',
+                body: `${data.users?.name || 'Someone'} mentioned you: "${payload.content.substring(0, 50)}${payload.content.length > 50 ? '...' : ''}"`,
+                type: 'message',
+                link: `/channels/${payload.channel_id}`
+              })
+            }
+          }
+        }
+
+        if (notificationsToInsert.length > 0) {
+          await supabase.from('notifications').insert(notificationsToInsert)
+        }
+      }
+    }
+  }
+
   return { data, error }
 }
 
@@ -304,4 +357,31 @@ function isMediaFile(value: string) {
 
 function countLinks(value: string) {
   return value.match(/https?:\/\/\S+/g)?.length ?? 0
+}
+
+export async function getUserChannelMembers(userId: string) {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('channel_members')
+    .select('*')
+    .eq('user_id', userId)
+  return { data, error }
+}
+
+export async function updateChannelMemberPrefs(channelId: string, userId: string, payload: { last_read_at?: string, muted?: boolean }) {
+  const supabase = createClient()
+  // First try to select existing to avoid losing joined_at
+  const { data: existing } = await supabase.from('channel_members').select('*').eq('channel_id', channelId).eq('user_id', userId).maybeSingle()
+  
+  const { data, error } = await supabase
+    .from('channel_members')
+    .upsert({ 
+      channel_id: channelId, 
+      user_id: userId, 
+      ...existing,
+      ...payload 
+    }, { onConflict: 'channel_id,user_id' })
+    .select()
+    .single()
+  return { data, error }
 }
