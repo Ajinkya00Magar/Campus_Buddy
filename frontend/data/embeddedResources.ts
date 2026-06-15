@@ -20,6 +20,12 @@ export const embeddedResources: Record<string, EmbeddedResource> = {
     provider: 'Campus Buddy',
     source_url: 'https://mitaoe-pyqs.vercel.app/',
   },
+  courses: {
+    id: 'courses',
+    title: 'MITAOE Courses',
+    provider: 'Campus Buddy',
+    source_url: 'https://mitaoe-courses.vercel.app/',
+  },
 }
 
 export function getEmbeddedResource(id: string): EmbeddedResource | undefined {

@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { markModuleComplete, awardCourseCompletion, checkCourseComplete, saveCourseLearningStatus } from '@/services/courses.service'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { CheckCircle2, Circle, PlayCircle, Clock, Layers, ArrowLeft, Trophy, Download, BookOpen, ArrowUpRight } from 'lucide-react'
-import { getLevelColor } from '@/lib/utils'
+import { CheckCircle2, Circle, PlayCircle, Clock, Layers, ArrowLeft, Trophy, Download, BookOpen, ArrowUpRight, ExternalLink, Loader2, Maximize2, Minimize2 } from 'lucide-react'
+import { cn, getLevelColor } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import Link from 'next/link'
 import type { Course, CourseLearningStatus, CourseModule, CourseProgress } from '@/types'
@@ -48,9 +48,16 @@ export default function CourseDetailClient({
   const [localCompletedAt, setLocalCompletedAt] = useState<string | undefined>(undefined)
   const [statusProgress, setStatusProgress] = useState(courseStatus?.progress_percent ?? (initialCompleted ? 100 : 0))
   const [savingStatus, setSavingStatus] = useState(false)
+  const [iframeFailed, setIframeFailed] = useState(false)
+  const [iframeLoading, setIframeLoading] = useState(Boolean(course.source_url && !course.embed_blocked))
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showExitControl, setShowExitControl] = useState(false)
+  const loadTimerRef = useRef<number | null>(null)
+  const embedRef = useRef<HTMLDivElement>(null)
+  const hideControlTimerRef = useRef<number | null>(null)
 
   const embeddedCourseUrl = course.source_url
-  const providerBlocksEmbed = course.embed_blocked
+  const providerBlocksEmbed = Boolean(course.embed_blocked || iframeFailed)
   const quizQuestions = course.quiz_questions ?? []
   const hasQuiz = quizQuestions.length > 0
   const singleStepCourse = Boolean(embeddedCourseUrl || hasQuiz)
@@ -94,6 +101,69 @@ export default function CourseDetailClient({
       setStatusProgress(courseStatus.progress_percent)
     }
   }, [course.id, course.course_modules, courseStatus, singleStepCourse, userId])
+
+  const exitFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen()
+    }
+  }, [])
+
+  const enterFullscreen = useCallback(async () => {
+    if (!embedRef.current) return
+    await embedRef.current.requestFullscreen()
+  }, [])
+
+  const revealExitControl = useCallback(() => {
+    setShowExitControl(true)
+    if (hideControlTimerRef.current !== null) {
+      window.clearTimeout(hideControlTimerRef.current)
+    }
+    hideControlTimerRef.current = window.setTimeout(() => {
+      setShowExitControl(false)
+    }, 2800)
+  }, [])
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === embedRef.current)
+      if (!document.fullscreenElement) {
+        setShowExitControl(false)
+      }
+    }
+
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
+      if (hideControlTimerRef.current !== null) {
+        window.clearTimeout(hideControlTimerRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!embeddedCourseUrl || course.embed_blocked) return
+
+    loadTimerRef.current = window.setTimeout(() => {
+      setIframeFailed(true)
+      setIframeLoading(false)
+    }, 12000)
+
+    return () => {
+      if (loadTimerRef.current !== null) {
+        window.clearTimeout(loadTimerRef.current)
+      }
+    }
+  }, [course.embed_blocked, embeddedCourseUrl])
+
+  const handleCourseIframeLoad = () => {
+    if (loadTimerRef.current !== null) {
+      window.clearTimeout(loadTimerRef.current)
+      loadTimerRef.current = null
+    }
+    setIframeLoading(false)
+    setIframeFailed(false)
+    handleStartLiveCourse()
+  }
 
   const generateCertificate = () => {
     if (!certificateReady) return
@@ -235,8 +305,159 @@ export default function CourseDetailClient({
     setMarking(false)
   }
 
+  if (embeddedCourseUrl) {
+    return (
+      <div
+        ref={embedRef}
+        className={cn(
+          'relative flex h-full min-h-0 flex-col bg-background',
+          isFullscreen && 'h-screen w-screen',
+        )}
+        onMouseMove={isFullscreen ? revealExitControl : undefined}
+        onTouchStart={isFullscreen ? revealExitControl : undefined}
+      >
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1E3A8A]/10 text-[#1E3A8A]">
+              <BookOpen className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {course.provider ?? 'Campus Buddy'}
+              </p>
+              <p className="truncate text-sm font-semibold text-foreground">{course.title}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className={`rounded-full text-white ${
+              providerBlocksEmbed ? 'bg-amber-600 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-600'
+            }`}>
+              {providerBlocksEmbed ? 'WebView mode' : 'Embedded'}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => (isFullscreen ? exitFullscreen() : enterFullscreen())}
+              title={isFullscreen ? 'Exit full screen (Esc)' : 'Full screen (like F11)'}
+            >
+              {isFullscreen ? (
+                <>
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  Exit full screen
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  Fit to screen
+                </>
+              )}
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <a href={embeddedCourseUrl} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open site
+              </a>
+            </Button>
+          </div>
+        </div>
+
+        {providerBlocksEmbed ? (
+          <div className="flex flex-1 items-center justify-center bg-white px-6 py-12 text-center dark:bg-background">
+            <div className="max-w-lg">
+              <BookOpen className="mx-auto mb-4 h-12 w-12 text-amber-500" />
+              <h2 className="text-xl font-bold text-foreground">Open in app browser</h2>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                This site blocks iframe embedding, so Campus Buddy opens it as a full-screen in-app course browser instead. Use your browser back control to return here.
+              </p>
+              <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
+                <Button asChild className="bg-[#1E3A8A] text-white hover:bg-[#1e40af]">
+                  <Link href={`/course-browser/${course.id}`} onClick={handleStartLiveCourse}>
+                    <ArrowUpRight className="h-4 w-4" />
+                    Start Course
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleMarkLiveCourseComplete}
+                  disabled={isCompleted || savingStatus}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {isCompleted ? 'Completed' : savingStatus ? 'Saving...' : 'Mark Complete'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+              <p className="text-sm text-muted-foreground">
+                {isCompleted ? 'This course is marked complete.' : 'Mark this course complete after finishing the embedded lesson.'}
+              </p>
+              <Button
+                size="sm"
+                onClick={handleMarkLiveCourseComplete}
+                disabled={isCompleted || savingStatus}
+                className="bg-[#1E3A8A] text-white hover:bg-[#1e40af]"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                {isCompleted ? 'Completed' : savingStatus ? 'Saving...' : 'Mark Complete'}
+              </Button>
+            </div>
+            <div
+              className={cn(
+                'relative min-h-0 flex-1 bg-white',
+                isFullscreen && 'flex h-screen w-screen flex-col',
+              )}
+            >
+              {iframeLoading && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              <iframe
+                src={embeddedCourseUrl}
+                title={`${course.title} embedded course`}
+                className="h-full w-full flex-1 border-0"
+                allow="fullscreen; clipboard-read; clipboard-write; encrypted-media; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                onLoad={handleCourseIframeLoad}
+              />
+
+              {isFullscreen && (
+                <>
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 z-20 h-20 bg-gradient-to-b from-black/50 to-transparent"
+                    aria-hidden
+                  />
+                  <div
+                    className={cn(
+                      'absolute left-1/2 top-4 z-30 -translate-x-1/2 transition-all duration-300',
+                      showExitControl
+                        ? 'pointer-events-auto translate-y-0 opacity-100'
+                        : 'pointer-events-none -translate-y-2 opacity-0',
+                    )}
+                  >
+                    <Button
+                      size="sm"
+                      onClick={exitFullscreen}
+                      className="gap-2 bg-black/75 text-white shadow-lg backdrop-blur-sm hover:bg-black/90"
+                    >
+                      <Minimize2 className="h-4 w-4" />
+                      Exit full screen
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-3 md:p-4">
       <Link href="/courses" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-gray-900">
         <ArrowLeft className="h-4 w-4" /> Back to Courses
       </Link>
@@ -411,74 +632,6 @@ export default function CourseDetailClient({
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      ) : embeddedCourseUrl ? (
-        <Card className="overflow-hidden">
-          <CardContent className="p-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{course.provider}</p>
-                <p className="text-sm font-semibold text-foreground">{course.title}</p>
-              </div>
-              <Badge className={`rounded-full text-white ${providerBlocksEmbed ? 'bg-amber-600 hover:bg-amber-600' : 'bg-emerald-600 hover:bg-emerald-600'}`}>
-                {providerBlocksEmbed ? 'WebView mode' : 'Embedded'}
-              </Badge>
-            </div>
-            {providerBlocksEmbed ? (
-              <div className="flex min-h-[420px] items-center justify-center bg-white px-6 py-12 text-center">
-                <div className="max-w-lg">
-                  <BookOpen className="mx-auto mb-4 h-12 w-12 text-amber-500" />
-                  <h2 className="text-xl font-bold text-gray-900">Open in WebView mode</h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    Cisco NetAcad blocks iframe embedding, so Campus Buddy opens the course as a full-screen top-level page instead. In a mobile WebView shell this keeps the user inside the app container while avoiding Cisco&apos;s iframe restriction.
-                  </p>
-                  <div className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
-                    <Button asChild className="bg-[#1E3A8A] text-white hover:bg-[#1e40af]">
-                      <Link href={`/course-browser/${course.id}`} onClick={handleStartLiveCourse}>
-                        <ArrowUpRight className="h-4 w-4" />
-                        Start Course
-                      </Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleMarkLiveCourseComplete}
-                      disabled={isCompleted || savingStatus}
-                    >
-                      <CheckCircle2 className="h-4 w-4" />
-                      {isCompleted ? 'Completed' : savingStatus ? 'Saving...' : 'Mark Complete'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-                  <p className="text-sm text-muted-foreground">
-                    {isCompleted ? 'This course is marked complete.' : 'Mark this course complete after finishing the embedded lesson.'}
-                  </p>
-                  <Button
-                    size="sm"
-                    onClick={handleMarkLiveCourseComplete}
-                    disabled={isCompleted || savingStatus}
-                    className="bg-[#1E3A8A] text-white hover:bg-[#1e40af]"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    {isCompleted ? 'Completed' : savingStatus ? 'Saving...' : 'Mark Complete'}
-                  </Button>
-                </div>
-                <div className="h-[calc(100vh-17rem)] min-h-[620px] bg-white">
-                  <iframe
-                    src={embeddedCourseUrl}
-                    title={`${course.title} embedded course`}
-                    className="h-full w-full border-0"
-                    allow="fullscreen; clipboard-read; clipboard-write; encrypted-media; web-share"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    onLoad={handleStartLiveCourse}
-                  />
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
       ) : (

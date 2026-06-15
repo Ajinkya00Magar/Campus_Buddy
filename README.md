@@ -17,7 +17,7 @@ Built with: **Next.js 15 · TypeScript · Tailwind CSS · Supabase**
 | **User Profiles**        | Custom **Profile Picture** uploads, verified identities for students, and role-based permissions. |
 | **Academics Hub**        | Integrated links to **PYQs** and **Notes** portals, plus module-based Courses.                    |
 | **Events & Clubs**       | Campus-wide event calendar with RSVP and comprehensive Club directories.                          |
-| **Admin Controls**       | Manage users, assign roles, set FY/SY/TY student year categories, create private channels, and manage student memberships. |
+| **Admin Controls**       | Manage users, assign roles, assign FY/SY/TY student year categories, create private channels, and manage student memberships. |
 
 ---
 
@@ -93,6 +93,7 @@ campus-buddy/
 
 - **Year-Based Isolation**: Students only see channels matching their PRN year (1-4).
 - **Admin Year Assignment**: Admins can assign students to FY/SY/TY categories from Manage Users to control which academic-year channels they can see.
+- **Developer Hub**: The `CB-DEV-TEAM` section contains the single `CB` development channel for team chat.
 - **Private Rooms**: Admins can create private channels and explicitly add specific students.
 - **Elevated Roles**: Professors and CRs can manage messages, create events, and moderate content.
 - **Real-time Sync**: Full `REPLICA IDENTITY` ensures deletions and updates sync instantly across all clients.
@@ -115,8 +116,7 @@ All accounts use the password: `password123`
 | **SY Student**   | `sy.student@test.mitaoe.ac.in` | `password123` |
 | **TY Student**   | `ty.student@test.mitaoe.ac.in` | `password123` |
 
-_You can generate the core accounts automatically using `node scripts/seed_users.mjs`._
-
+_You can generate these accounts automatically using `node scripts/seed_users.mjs`._
 _You can also seed a dedicated FY/SY/TY student set using `node scripts/seed_test_students.mjs`._
 
 ---
@@ -129,4 +129,3 @@ This project is optimized for **Vercel**.
 2. Connect repository to Vercel.
 3. Add Environment Variables.
 4. Update Supabase Auth URLs to your production domain.
-yo
