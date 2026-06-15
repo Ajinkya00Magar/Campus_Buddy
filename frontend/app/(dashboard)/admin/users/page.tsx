@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
   const { toast } = useToast()
   const { users, setUsers, loading } = useAllUsers()
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [updatingYearId, setUpdatingYearId] = useState<string | null>(null)
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     setUpdatingId(userId)
@@ -37,6 +38,22 @@ export default function AdminUsersPage() {
     } else {
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
       toast({ title: 'Role updated' })
+    }
+  }
+
+  const handleYearChange = async (userId: string, newYear: number | null) => {
+    setUpdatingYearId(userId)
+    const { error } = await supabase
+      .from('users')
+      .update({ year: newYear })
+      .eq('id', userId)
+
+    setUpdatingYearId(null)
+    if (error) {
+      toast({ title: 'Error updating year', description: error.message, variant: 'destructive' })
+    } else {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, year: newYear ?? undefined } : u))
+      toast({ title: 'Student year updated' })
     }
   }
 
@@ -109,9 +126,34 @@ export default function AdminUsersPage() {
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="text-sm text-foreground/80 font-medium">
-                      {u.department ?? '—'}
-                      {u.year && <span className="ml-2 text-muted-foreground font-normal">· Year {u.year}</span>}
+                    <div className="flex flex-col gap-2">
+                      <div className="text-sm text-foreground/80 font-medium">
+                        {u.department ?? '—'}
+                      </div>
+                      {u.role === 'student' ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Year</span>
+                          <Select
+                            defaultValue={u.year ? String(u.year) : 'none'}
+                            onValueChange={(value) => handleYearChange(u.id, value === 'none' ? null : parseInt(value, 10))}
+                            disabled={updatingYearId === u.id}
+                          >
+                            <SelectTrigger className="h-8 w-24 text-xs font-medium border border-border shadow-none bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="1">1</SelectItem>
+                              <SelectItem value="2">2</SelectItem>
+                              <SelectItem value="3">3</SelectItem>
+                              <SelectItem value="4">4</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {updatingYearId === u.id && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not a student</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-4 text-xs text-muted-foreground font-medium">
