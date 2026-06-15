@@ -74,6 +74,15 @@ WHERE NOT EXISTS (
     AND year = year_value
 );
 
+-- CB development channel for internal team discussions.
+INSERT INTO public.channels (name, description, type, department, year, is_private)
+SELECT 'cb', 'CB development chat', 'official', NULL, NULL, FALSE
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.channels
+  WHERE lower(name) = 'cb'
+    AND type = 'official'
+);
+
 -- Remove legacy mechanical channels; Campus Buddy currently serves CSE students only.
 DELETE FROM public.channels
 WHERE lower(name) LIKE 'mech-%' OR department = 'MECH';

@@ -371,3 +371,11 @@ INSERT INTO public.channels (name, description, type, department, year) VALUES
   ('cse-2nd-year',   'CSE Second Year Group',                'academic',  'CSE', 2),
   ('robotics-club',  'Robotics Club Official',               'club',      NULL,  NULL)
 ON CONFLICT DO NOTHING;
+
+INSERT INTO public.channels (name, description, type, department, year, is_private)
+SELECT 'cb', 'CB development chat', 'official', NULL, NULL, FALSE
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.channels
+  WHERE lower(name) = 'cb'
+    AND type = 'official'
+);

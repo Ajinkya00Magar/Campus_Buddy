@@ -17,6 +17,7 @@ export default async function ChannelsPage() {
   const allChannels = filterChannelsForUser(channels ?? [], profile)
   const subjectChannels = allChannels.filter(isYearChannel)
   const cbChannel = allChannels.find((ch) => ch.name?.toLowerCase() === 'cb')
+  const isAdmin = profile?.role === 'admin'
 
   const visibleYears = getVisibleChannelYears(profile)
 
@@ -63,7 +64,7 @@ export default async function ChannelsPage() {
               {cbChannel ? (
                 <Link
                   href={`/channels/${cbChannel.id}`}
-                  className="block rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-primary/40 hover:shadow-lg dark:border-slate-700 dark:bg-slate-950"
+                  className="group block rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-primary/40 hover:shadow-lg dark:border-slate-700 dark:bg-slate-950"
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div>
@@ -75,10 +76,28 @@ export default async function ChannelsPage() {
                       CB
                     </div>
                   </div>
+                  <div className="mt-6 flex items-center justify-between gap-4 text-sm font-semibold text-primary transition group-hover:text-primary/90">
+                    <span>Open channel</span>
+                    <span className="inline-flex h-9 items-center rounded-full bg-primary/10 px-3 text-primary">Go</span>
+                  </div>
                 </Link>
               ) : (
                 <div className="rounded-3xl border border-dashed border-slate-300 bg-muted/20 p-6 text-sm text-muted-foreground">
-                  The CB development channel has not been created yet. Once created, it will appear here.
+                  <p>The CB development channel has not been created yet. Once created, it will appear here.</p>
+                  {isAdmin ? (
+                    <div className="mt-4">
+                      <Link
+                        href="/admin/channels"
+                        className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                      >
+                        Create CB channel in Admin
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                      Ask an admin to create the CB development channel so you can open it from here.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
