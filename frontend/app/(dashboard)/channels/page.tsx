@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import YearDisclosure from '@/components/channels/YearDisclosure'
-import type { User, Channel } from '@/types'
+import { filterChannelsForUser, getVisibleChannelYears, isYearChannel } from '@/utils/channelVisibility'
+import type { Channel } from '@/types'
 
 export default async function ChannelsPage() {
   const supabase = await createClient()
@@ -13,21 +14,11 @@ export default async function ChannelsPage() {
     supabase.from('channels').select('*').order('type').order('name'),
   ])
 
-  const allChannels = channels ?? []
-  const subjectChannels = allChannels.filter(
-    (ch) => ch.type === 'academic' || ch.type === 'subject'
-  )
-  const cbChannel = allChannels.find(
-    (ch) => ch.name?.toLowerCase() === 'cb'
-  )
+  const allChannels = filterChannelsForUser(channels ?? [], profile)
+  const subjectChannels = allChannels.filter(isYearChannel)
+  const cbChannel = allChannels.find((ch) => ch.name?.toLowerCase() === 'cb')
 
-  const safeChannels = profile && !['admin', 'professor', 'cr'].includes(profile.role)
-    ? subjectChannels.filter((ch) => ch.year === profile.year)
-    : subjectChannels
-
-  const visibleYears = profile && !['admin', 'professor', 'cr'].includes(profile.role)
-    ? [profile.year]
-    : [1, 2, 3, 4]
+  const visibleYears = getVisibleChannelYears(profile)
 
   return (
     <div className="space-y-8 px-4 pb-10 md:px-6 lg:px-8">
@@ -38,7 +29,7 @@ export default async function ChannelsPage() {
             Browse subject channels for your year
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-            First Year and Second Year subject channels are shown only to the matching student year. Other users can view every year.
+            Computer Science Engineering subject channels are organized by academic year. Year notices are available inside each year section below — not in the sidebar.
           </p>
         </div>
       </div>
@@ -48,7 +39,7 @@ export default async function ChannelsPage() {
           <YearDisclosure
             key={year}
             year={year}
-            channels={safeChannels as Channel[]}
+            channels={subjectChannels as Channel[]}
             currentYear={profile?.year ?? null}
           />
         ))}

@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { useChannels } from '@/hooks/useChannels'
 import { useEvents } from '@/hooks/useEvents'
 import { useCourses } from '@/hooks/useCourses'
+import { getProfileDepartmentDisplay, STUDENT_DEPARTMENT_SHORT } from '@/utils/department'
 import type { User, Channel, Event, Course } from '@/types'
 
 export default function DashboardClient({
@@ -43,6 +44,7 @@ export default function DashboardClient({
   ]
 
   const upcomingEvents = events.filter(e => new Date(e.event_date) >= new Date()).slice(0, 3)
+  const departmentLabel = getProfileDepartmentDisplay(profile)
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fade-in">
@@ -54,10 +56,17 @@ export default function DashboardClient({
             Hello, {profile?.name?.split(' ')[0]}! <span className="animate-bounce">👋</span>
           </h1>
           <p className="text-sm text-muted-foreground font-medium mt-1">
-            Welcome to your MITAOE campus dashboard. Here's your overview for today.
+            Welcome to your MITAOE campus dashboard{departmentLabel ? ` · ${departmentLabel}` : ''}.
           </p>
         </div>
-        <div className="relative flex gap-3">
+        <div className="relative flex flex-wrap gap-3">
+          {departmentLabel && (
+            <div className="rounded-xl bg-muted/50 px-4 py-2 border border-border min-w-[7.5rem]">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground/80 tracking-wider">Department</p>
+              <p className="text-sm font-bold text-foreground leading-tight">{STUDENT_DEPARTMENT_SHORT}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{departmentLabel}</p>
+            </div>
+          )}
           <div className="rounded-xl bg-muted/50 px-4 py-2 border border-border">
             <p className="text-[10px] font-bold uppercase text-muted-foreground/80 tracking-wider">Year</p>
             <p className="text-base font-black text-foreground">{profile?.year ?? '—'}</p>

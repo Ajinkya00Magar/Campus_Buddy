@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/contexts/SidebarContext'
+import { useUnreadBadges } from '@/hooks/useUnreadBadges'
 import { cn } from '@/lib/utils'
+import { isYearNoticeChannel, shouldShowChannelInSidebar, YEAR_LABELS, YEAR_VALUES } from '@/utils/channelVisibility'
 import {
   LayoutDashboard, Calendar, Users2, BookOpen,
   Hash, Bell, Settings, GraduationCap, Shield, ChevronLeft, ChevronRight,
@@ -25,9 +27,10 @@ const navItems = [
 const adminItems = [{ href: '/admin', label: 'Admin Panel', icon: Shield }]
 const courseManagerItems = [{ href: '/admin/courses', label: 'Manage Courses', icon: BookOpen }]
 
-export default function Sidebar({ role, channels = [] }: { role: UserRole, channels?: Channel[] }) {
+export default function Sidebar({ role, channels = [], userId }: { role: UserRole, channels?: Channel[], userId?: string }) {
   const pathname = usePathname()
   const { isOpen, toggle, close } = useSidebar()
+  const { unreadCounts, mutedChannels } = useUnreadBadges(userId, channels)
   const items = role === 'admin'
     ? [...navItems, ...adminItems]
     : ['professor', 'cr'].includes(role)
@@ -41,7 +44,7 @@ export default function Sidebar({ role, channels = [] }: { role: UserRole, chann
         style={{ width: isOpen ? '232px' : '60px' }}
         className="relative z-20 hidden h-full shrink-0 flex-col overflow-hidden border-r border-border bg-slate-100 transition-[width] duration-150 ease-in-out dark:border-slate-800 dark:bg-slate-950 md:flex"
       >
-        <SidebarInner items={items} pathname={pathname} isOpen={isOpen} toggle={toggle} onNavClick={() => {}} channels={channels} />
+        <SidebarInner items={items} pathname={pathname} isOpen={isOpen} toggle={toggle} onNavClick={() => {}} channels={channels} unreadCounts={unreadCounts} mutedChannels={mutedChannels} />
       </aside>
 
       {/* ── Mobile: fixed overlay, slides in ── */}
@@ -51,14 +54,14 @@ export default function Sidebar({ role, channels = [] }: { role: UserRole, chann
         'transition-transform duration-150 ease-in-out',
         isOpen ? 'translate-x-0' : '-translate-x-full',
       )}>
-        <SidebarInner items={items} pathname={pathname} isOpen={true} toggle={toggle} onNavClick={close} channels={channels} />
+        <SidebarInner items={items} pathname={pathname} isOpen={true} toggle={toggle} onNavClick={close} channels={channels} unreadCounts={unreadCounts} mutedChannels={mutedChannels} />
       </aside>
     </>
   )
 }
 
 function SidebarInner({
-  items, pathname, isOpen, toggle, onNavClick, channels
+  items, pathname, isOpen, toggle, onNavClick, channels, unreadCounts, mutedChannels
 }: {
   items: any[]
   pathname: string
@@ -66,6 +69,8 @@ function SidebarInner({
   toggle: () => void
   onNavClick: () => void
   channels: Channel[]
+  unreadCounts: Record<string, number>
+  mutedChannels: Set<string>
 }) {
   const [channelsExpanded, setChannelsExpanded] = useState(pathname.startsWith('/channels'))
   
@@ -75,9 +80,25 @@ function SidebarInner({
     }
   }, [pathname])
 
-  const official = channels.filter(c => c.type === 'official')
-  const curriculum = channels.filter(c => c.type === 'academic' || c.type === 'subject')
-  const clubs = channels.filter(c => c.type === 'club')
+  const sidebarChannels = channels.filter(shouldShowChannelInSidebar)
+  const official = sidebarChannels.filter(c => c.type === 'official')
+  const curriculum = sidebarChannels.filter(c => c.type === 'academic' || c.type === 'subject')
+  const curriculumByYear = YEAR_VALUES
+    .map((year) => ({
+      year,
+      channels: curriculum
+        .filter((channel) => channel.year === year)
+        .sort((a, b) => {
+          if (isYearNoticeChannel(a) && !isYearNoticeChannel(b)) return -1
+          if (!isYearNoticeChannel(a) && isYearNoticeChannel(b)) return 1
+          return a.name.localeCompare(b.name)
+        }),
+    }))
+    .filter((group) => group.channels.length > 0)
+  const clubs = sidebarChannels.filter(c => c.type === 'club')
+
+  // Calculate total unread channels count for the Channels nav item
+  const totalUnread = channels.reduce((acc, ch) => acc + (unreadCounts[ch.id] ? 1 : 0), 0)
 
   return (
     <div className="flex flex-col h-full">
@@ -171,19 +192,28 @@ function SidebarInner({
                   {official.length > 0 && (
                     <div className="space-y-0.5">
                       <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">General</p>
-                      {official.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} />)}
+                      {official.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} unreadCount={unreadCounts[ch.id]} isMuted={mutedChannels.has(ch.id)} />)}
                     </div>
                   )}
                   {curriculum.length > 0 && (
                     <div className="space-y-0.5">
                       <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Curriculum</p>
-                      {curriculum.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} />)}
+                      {curriculumByYear.map((group) => (
+                        <div key={group.year} className="space-y-0.5">
+                          {curriculumByYear.length > 1 && (
+                            <p className="px-2 pt-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
+                              {YEAR_LABELS[group.year]}
+                            </p>
+                          )}
+                          {group.channels.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} unreadCount={unreadCounts[ch.id]} isMuted={mutedChannels.has(ch.id)} />)}
+                        </div>
+                      ))}
                     </div>
                   )}
                   {clubs.length > 0 && (
                     <div className="space-y-0.5">
                       <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Clubs</p>
-                      {clubs.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} />)}
+                      {clubs.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} unreadCount={unreadCounts[ch.id]} isMuted={mutedChannels.has(ch.id)} />)}
                     </div>
                   )}
                 </div>
@@ -223,7 +253,7 @@ function SidebarInner({
   )
 }
 
-function SidebarChannelLink({ channel, pathname, onNavClick }: { channel: Channel, pathname: string, onNavClick: () => void }) {
+function SidebarChannelLink({ channel, pathname, onNavClick, unreadCount = 0, isMuted = false }: { channel: Channel, pathname: string, onNavClick: () => void, unreadCount?: number, isMuted?: boolean }) {
   const isActive = pathname === `/channels/${channel.id}`
   
   return (
@@ -231,18 +261,28 @@ function SidebarChannelLink({ channel, pathname, onNavClick }: { channel: Channe
       href={`/channels/${channel.id}`}
       onClick={onNavClick}
       className={cn(
-        "flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+        "flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium transition-colors justify-between",
         isActive 
           ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100" 
           : "text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
       )}
     >
-      {channel.is_private ? (
-        <Lock className="h-3 w-3 shrink-0 opacity-60" />
-      ) : (
-        <Hash className="h-3 w-3 shrink-0 opacity-60" />
+      <div className="flex items-center gap-2 min-w-0">
+        {channel.is_private ? (
+          <Lock className="h-3 w-3 shrink-0 opacity-60" />
+        ) : (
+          <Hash className="h-3 w-3 shrink-0 opacity-60" />
+        )}
+        <span className={cn("truncate", !isActive && unreadCount > 0 && !isMuted && "font-bold text-slate-900 dark:text-slate-100")}>{channel.name}</span>
+      </div>
+      {unreadCount > 0 && (
+        <span className={cn(
+          "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+          isMuted ? "bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400" : "bg-blue-600 text-white"
+        )}>
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </span>
       )}
-      <span className="truncate">{channel.name}</span>
     </Link>
   )
 }

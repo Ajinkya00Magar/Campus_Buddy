@@ -56,6 +56,34 @@ CREATE POLICY "channel_members_manage" ON public.channel_members FOR ALL USING (
 DROP POLICY IF EXISTS "messages_update" ON public.messages;
 CREATE POLICY "messages_update" ON public.messages FOR UPDATE USING (auth.uid() = sender_id OR EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND role IN ('admin', 'professor', 'cr')));
 
+-- Dedicated year-wise #notices channels. Students only see the row matching
+-- their assigned year through the application-level year visibility filter.
+INSERT INTO public.channels (name, description, type, department, year, is_private)
+SELECT 'notices', label, 'academic', NULL, year_value, FALSE
+FROM (
+  VALUES
+    (1, 'First Year Notices'),
+    (2, 'Second Year Notices'),
+    (3, 'Third Year Notices'),
+    (4, 'Fourth Year Notices')
+) AS year_notices(year_value, label)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.channels
+  WHERE lower(name) = 'notices'
+    AND type IN ('academic', 'subject')
+    AND year = year_value
+);
+
+-- Remove legacy mechanical channels; Campus Buddy currently serves CSE students only.
+DELETE FROM public.channels
+WHERE lower(name) LIKE 'mech-%' OR department = 'MECH';
+
+-- Normalize seeded student accounts to CSE.
+UPDATE public.users
+SET department = 'CSE'
+WHERE role IN ('student', 'cr')
+  AND (department IS NULL OR department <> 'CSE');
+
 -- 5. Storage Buckets (Avatars and Files)
 INSERT INTO storage.buckets (id, name, public) VALUES ('channel-files', 'channel-files', true) ON CONFLICT (id) DO NOTHING;
 INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT (id) DO NOTHING;
@@ -75,7 +103,7 @@ BEGIN
       WHEN NEW.raw_user_meta_data->>'role' = 'teacher' THEN 'professor'
       ELSE COALESCE(NEW.raw_user_meta_data->>'role', 'student')
     END,
-    NEW.raw_user_meta_data->>'department',
+    COALESCE(NEW.raw_user_meta_data->>'department', CASE WHEN COALESCE(NEW.raw_user_meta_data->>'role', 'student') IN ('student', 'cr') THEN 'CSE' ELSE NULL END),
     CASE WHEN NEW.raw_user_meta_data->>'year' IS NOT NULL THEN (NEW.raw_user_meta_data->>'year')::INTEGER ELSE NULL END
   )
   ON CONFLICT (id) DO NOTHING;
