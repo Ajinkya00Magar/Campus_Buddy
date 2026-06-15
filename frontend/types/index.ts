@@ -181,3 +181,12 @@ export interface Notification {
   is_read: boolean
   created_at: string
 }
+
+export interface ChannelMember {
+  id: string
+  channel_id: string
+  user_id: string
+  joined_at: string
+  last_read_at?: string
+  muted: boolean
+}

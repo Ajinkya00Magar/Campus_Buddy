@@ -1,6 +1,8 @@
-import { Info, Users2, File as FileIcon, FileText, Link as LinkIcon, Star, X } from 'lucide-react'
+import { Info, Users2, File as FileIcon, FileText, Link as LinkIcon, Star, X, BellOff, BellRing } from 'lucide-react'
 import type { Channel, ChannelStats, Message } from '@/types'
 import { InfoMetric, InfoSection } from './UIComponents'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 
 export function ChannelInfoPanel({
   channel,
@@ -9,6 +11,8 @@ export function ChannelInfoPanel({
   docItems,
   linkItems,
   starredCount,
+  isMuted,
+  onToggleMute,
   onClose,
 }: {
   channel: Channel
@@ -17,6 +21,8 @@ export function ChannelInfoPanel({
   docItems: Message[]
   linkItems: { message: Message; url: string }[]
   starredCount: number
+  isMuted: boolean
+  onToggleMute: (muted: boolean) => void
   onClose: () => void
 }) {
   return (
@@ -38,6 +44,14 @@ export function ChannelInfoPanel({
         <section>
           <h3 className="text-sm font-semibold text-foreground">#{channel.name}</h3>
           <p className="mt-1 text-xs text-muted-foreground">{channel.description || 'No description provided.'}</p>
+        </section>
+
+        <section className="flex items-center justify-between rounded-lg border bg-background p-3">
+          <div className="flex items-center gap-2">
+            {isMuted ? <BellOff className="h-4 w-4 text-muted-foreground" /> : <BellRing className="h-4 w-4 text-primary" />}
+            <Label htmlFor="mute-channel" className="text-xs font-semibold cursor-pointer">Mute Channel</Label>
+          </div>
+          <Switch id="mute-channel" checked={isMuted} onCheckedChange={onToggleMute} />
         </section>
 
         <div className="grid grid-cols-2 gap-2">
