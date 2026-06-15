@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/contexts/SidebarContext'
 import { useUnreadBadges } from '@/hooks/useUnreadBadges'
 import { cn } from '@/lib/utils'
+import { isYearNoticeChannel, shouldShowChannelInSidebar, YEAR_LABELS, YEAR_VALUES } from '@/utils/channelVisibility'
 import {
   LayoutDashboard, Calendar, Users2, BookOpen,
   Hash, Bell, Settings, GraduationCap, Shield, ChevronLeft, ChevronRight,
@@ -79,9 +80,25 @@ function SidebarInner({
     }
   }, [pathname])
 
-  const official = channels.filter(c => c.type === 'official')
-  const curriculum = channels.filter(c => c.type === 'academic' || c.type === 'subject')
-  const clubs = channels.filter(c => c.type === 'club')
+  const sidebarChannels = channels.filter(shouldShowChannelInSidebar)
+  const official = sidebarChannels.filter(c => c.type === 'official')
+  const curriculum = sidebarChannels.filter(c => c.type === 'academic' || c.type === 'subject')
+  const curriculumByYear = YEAR_VALUES
+    .map((year) => ({
+      year,
+      channels: curriculum
+        .filter((channel) => channel.year === year)
+        .sort((a, b) => {
+          if (isYearNoticeChannel(a) && !isYearNoticeChannel(b)) return -1
+          if (!isYearNoticeChannel(a) && isYearNoticeChannel(b)) return 1
+          return a.name.localeCompare(b.name)
+        }),
+    }))
+    .filter((group) => group.channels.length > 0)
+  const clubs = sidebarChannels.filter(c => c.type === 'club')
+
+  // Calculate total unread channels count for the Channels nav item
+  const totalUnread = channels.reduce((acc, ch) => acc + (unreadCounts[ch.id] ? 1 : 0), 0)
 
   // Calculate total unread channels count for the Channels nav item
   const totalUnread = channels.reduce((acc, ch) => acc + (unreadCounts[ch.id] ? 1 : 0), 0)

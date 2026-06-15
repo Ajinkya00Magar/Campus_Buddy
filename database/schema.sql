@@ -363,8 +363,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.users;
 INSERT INTO public.channels (name, description, type, department, year) VALUES
   ('notices',        'Official campus notices',              'official',  NULL,  NULL),
   ('placements',     'Placement updates and opportunities',  'official',  NULL,  NULL),
+  ('notices',        'First Year Notices',                   'academic',  NULL,  1),
+  ('notices',        'Second Year Notices',                  'academic',  NULL,  2),
+  ('notices',        'Third Year Notices',                   'academic',  NULL,  3),
+  ('notices',        'Fourth Year Notices',                  'academic',  NULL,  4),
   ('cse-1st-year',   'CSE First Year Group',                 'academic',  'CSE', 1),
   ('cse-2nd-year',   'CSE Second Year Group',                'academic',  'CSE', 2),
-  ('mech-1st-year',  'Mechanical First Year Group',          'academic',  'MECH',1),
   ('robotics-club',  'Robotics Club Official',               'club',      NULL,  NULL)
 ON CONFLICT DO NOTHING;

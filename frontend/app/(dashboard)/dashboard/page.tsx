@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from './DashboardClient'
+import { filterChannelsForUser } from '@/utils/channelVisibility'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -42,13 +43,8 @@ export default async function DashboardPage() {
 
   const completedIds = new Set((completions ?? []).map((c: any) => c.course_id))
 
-  // Apply initial filtering for channels
-  const filteredChannels = (channels ?? []).filter(ch => {
-    if (['admin', 'professor', 'cr'].includes(profile?.role ?? '')) return true
-    const matchesYear = !ch.year || ch.year === profile?.year
-    const matchesDept = !ch.department || ch.department === profile?.department
-    return matchesYear && matchesDept && !ch.is_private
-  }).sort((a, b) => (a.type === 'official' ? -1 : 1))
+  const filteredChannels = filterChannelsForUser(channels ?? [], profile)
+    .sort((a, b) => (a.type === 'official' ? -1 : 1))
 
   return (
     <DashboardClient

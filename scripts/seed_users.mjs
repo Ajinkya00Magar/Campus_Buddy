@@ -40,8 +40,8 @@ const dummyUsers = [
   
   // STUDENTS
   { name: 'Rahul Sharma', email: '100000000001@mitaoe.ac.in', role: 'student', department: 'CSE', year: 2 },
-  { name: 'Sneha Patil', email: '100000000002@mitaoe.ac.in', role: 'student', department: 'ENTC', year: 3 },
-  { name: 'Aditya Verma', email: '100000000003@mitaoe.ac.in', role: 'student', department: 'MECH', year: 1 },
+  { name: 'Sneha Patil', email: '100000000002@mitaoe.ac.in', role: 'student', department: 'CSE', year: 3 },
+  { name: 'Aditya Verma', email: '100000000003@mitaoe.ac.in', role: 'student', department: 'CSE', year: 1 },
 ]
 
 async function seed() {

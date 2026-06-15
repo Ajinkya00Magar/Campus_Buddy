@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { LogOut, User, Settings, Menu, Sun, Moon } from 'lucide-react'
+import { getProfileDepartmentDisplay, STUDENT_DEPARTMENT_SHORT } from '@/utils/department'
 import type { User as UserType } from '@/types'
 
 export default function Navbar({ user }: { user: UserType | null }) {
@@ -27,6 +28,8 @@ export default function Navbar({ user }: { user: UserType | null }) {
   }
 
   if (!user) return null
+
+  const departmentLabel = getProfileDepartmentDisplay(user)
 
   return (
     <header className="z-20 flex h-14 shrink-0 items-center gap-2 border-b bg-card px-3 md:px-4">
@@ -74,12 +77,19 @@ export default function Navbar({ user }: { user: UserType | null }) {
             </Avatar>
             <div className="text-left hidden sm:block">
               <p className="text-sm font-medium leading-tight text-foreground">{user.name}</p>
-              <span className={cn(
-                'text-[10px] px-1.5 py-0.5 font-medium border',
-                getRoleBadgeColor(user.role)
-              )}>
-                {user.role}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className={cn(
+                  'text-[10px] px-1.5 py-0.5 font-medium border',
+                  getRoleBadgeColor(user.role)
+                )}>
+                  {user.role}
+                </span>
+                {departmentLabel && (
+                  <span className="text-[10px] text-muted-foreground font-medium truncate max-w-[140px]">
+                    {STUDENT_DEPARTMENT_SHORT}
+                  </span>
+                )}
+              </div>
             </div>
           </button>
         </DropdownMenuTrigger>
@@ -89,6 +99,9 @@ export default function Navbar({ user }: { user: UserType | null }) {
             <div className="flex flex-col gap-0.5">
               <p className="text-sm font-semibold">{user.name}</p>
               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              {departmentLabel && (
+                <p className="text-[11px] text-muted-foreground">{departmentLabel}</p>
+              )}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

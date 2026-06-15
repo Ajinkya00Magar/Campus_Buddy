@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { uploadAvatar, deleteAvatar } from '@/services/channels.service'
 import { generateCourseCertificate } from '@/utils/courseCertificates'
+import { getProfileDepartmentDisplay, STUDENT_DEPARTMENT_SHORT } from '@/utils/department'
 import { getLocalCourseCompletions, type LocalCourseCompletion } from '@/utils/localCourseCompletions'
 import {
   Sun, Moon, User, BookOpen, Users2,
@@ -154,6 +155,8 @@ export default function SettingsClient({
 
   if (!profile) return null
 
+  const departmentLabel = getProfileDepartmentDisplay(profile)
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-12">
       <div>
@@ -220,9 +223,15 @@ export default function SettingsClient({
                 <Mail className="h-4 w-4" />
                 {profile.email}
               </div>
-              {(profile.department || profile.year) && (
-                <div className="flex items-center gap-3 text-muted-foreground text-xs font-bold uppercase tracking-tight">
-                  {profile.department && <span className="bg-muted px-2 py-0.5 rounded">{profile.department}</span>}
+              {(departmentLabel || profile.year) && (
+                <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs font-bold uppercase tracking-tight">
+                  {departmentLabel && (
+                    <span className="rounded-lg border border-border bg-muted px-2.5 py-1">
+                      <span className="text-[10px] text-muted-foreground/80">{STUDENT_DEPARTMENT_SHORT}</span>
+                      <span className="mx-1.5 text-muted-foreground/40">·</span>
+                      <span className="normal-case">{departmentLabel}</span>
+                    </span>
+                  )}
                   {profile.year && <span className="bg-muted px-2 py-0.5 rounded">Year {profile.year}</span>}
                 </div>
               )}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { validateSignupInput, isValidMitaoeEmail } from '@/lib/validations'
+import { STUDENT_DEPARTMENT_CODE, STUDENT_DEPARTMENT_LABEL } from '@/utils/department'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,7 +30,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
-    name: '', email: '', password: '', role: 'student', department: '', year: '1'
+    name: '', email: '', password: '', role: 'student', department: STUDENT_DEPARTMENT_CODE, year: '1'
   })
 
   const set = (k: string, v: string) => {
@@ -75,7 +76,7 @@ export default function LoginPage() {
     const signupData: any = {
       name: form.name.trim(),
       role: form.role,
-      department: form.department.trim(),
+      department: isStudent ? STUDENT_DEPARTMENT_CODE : form.department.trim(),
     }
     if (isStudent) signupData.year = parseInt(form.year)
 
@@ -172,11 +173,20 @@ export default function LoginPage() {
                   </Select>
                 </div>
                 <div className={cn("grid gap-3", (form.role === 'student' || form.role === 'cr') ? "grid-cols-2" : "grid-cols-1")}>
-                  <div className="space-y-1.5">
-                    <Label>Department</Label>
-                    <Input placeholder="e.g. CSE" value={form.department}
-                      onChange={(e) => set('department', e.target.value)} />
-                  </div>
+                  {(form.role === 'student' || form.role === 'cr') ? (
+                    <div className="space-y-1.5">
+                      <Label>Department</Label>
+                      <div className="flex h-10 items-center rounded-md border border-input bg-muted/40 px-3 text-sm font-medium text-foreground">
+                        {STUDENT_DEPARTMENT_LABEL}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <Label>Department</Label>
+                      <Input placeholder="e.g. CSE" value={form.department}
+                        onChange={(e) => set('department', e.target.value)} />
+                    </div>
+                  )}
                   {(form.role === 'student' || form.role === 'cr') && (
                     <div className="space-y-1.5">
                       <Label>Year</Label>
