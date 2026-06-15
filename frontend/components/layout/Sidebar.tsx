@@ -100,6 +100,9 @@ function SidebarInner({
   // Calculate total unread channels count for the Channels nav item
   const totalUnread = channels.reduce((acc, ch) => acc + (unreadCounts[ch.id] ? 1 : 0), 0)
 
+  // Calculate total unread channels count for the Channels nav item
+  const totalUnread = channels.reduce((acc, ch) => acc + (unreadCounts[ch.id] ? 1 : 0), 0)
+
   return (
     <div className="flex flex-col h-full">
       {/* Brand row */}
@@ -198,16 +201,7 @@ function SidebarInner({
                   {curriculum.length > 0 && (
                     <div className="space-y-0.5">
                       <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Curriculum</p>
-                      {curriculumByYear.map((group) => (
-                        <div key={group.year} className="space-y-0.5">
-                          {curriculumByYear.length > 1 && (
-                            <p className="px-2 pt-1 text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-600">
-                              {YEAR_LABELS[group.year]}
-                            </p>
-                          )}
-                          {group.channels.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} unreadCount={unreadCounts[ch.id]} isMuted={mutedChannels.has(ch.id)} />)}
-                        </div>
-                      ))}
+                      {curriculum.map(ch => <SidebarChannelLink key={ch.id} channel={ch} pathname={pathname} onNavClick={onNavClick} unreadCount={unreadCounts[ch.id]} isMuted={mutedChannels.has(ch.id)} />)}
                     </div>
                   )}
                   {clubs.length > 0 && (
