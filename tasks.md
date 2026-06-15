@@ -25,10 +25,10 @@
 - [ ] Create automated provisioning for subject-specific channels per semester
 - [ ] Configure dedicated channels for placements, notices, and academic announcements
 - [x] Implement message reply functionality
-- [ ] Implement message edit and delete support
+- [x] Implement message edit and delete support
 - [x] Implement unread message count per channel
 - [x] Add `@mention` support to alert specific users
-- [ ] Implement pinned messages
+- [x] Implement pinned messages
 - [ ] Implement announcement-only mode for official channels (admin/faculty only)
 - [ ] Implement threaded discussions (replies within a thread panel)
 - [ ] Develop a centralized file repository UI for channel media/documents
@@ -46,7 +46,7 @@
 - [ ] Track and visualize student course progress
 - [x] Design and implement automated certificate generation
 - [ ] Implement digital achievement badges for course milestones
-- [x] Enable certificate PDF download and cryptographic verification
+- [ ] Enable certificate PDF download and cryptographic verification
 
 ## Events & Clubs
 
