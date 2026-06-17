@@ -6,7 +6,8 @@
     "dev": "next dev frontend",
     "build": "next build frontend",
     "start": "next start frontend",
-    "lint": "next lint frontend"
+    "lint": "next lint frontend",
+    "create-admin": "node scripts/create_admin_user.mjs"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.1",

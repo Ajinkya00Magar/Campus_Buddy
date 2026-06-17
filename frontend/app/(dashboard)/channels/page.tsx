@@ -16,7 +16,10 @@ export default async function ChannelsPage() {
 
   const allChannels = filterChannelsForUser(channels ?? [], profile)
   const subjectChannels = allChannels.filter(isYearChannel)
-  const cbChannel = allChannels.find((ch) => ch.name?.toLowerCase() === 'cb')
+  const devChannel = allChannels.find((ch) => ch.name?.toLowerCase() === 'cb') ?? allChannels.find((ch) => {
+    const text = `${ch.name ?? ''} ${ch.description ?? ''}`.toLowerCase()
+    return ch.type === 'official' && /\b(cb|campus buddy|campusbuddy|dev(eloper|elopment)?|development|dev team|dev-team)\b/.test(text)
+  })
   const isAdmin = profile?.role === 'admin'
 
   const visibleYears = getVisibleChannelYears(profile)
@@ -61,9 +64,9 @@ export default async function ChannelsPage() {
             </div>
 
             <div className="mt-6">
-              {cbChannel ? (
+              {devChannel ? (
                 <Link
-                  href={`/channels/${cbChannel.id}`}
+                  href={`/channels/${devChannel.id}`}
                   className="group block rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-primary/40 hover:shadow-lg dark:border-slate-700 dark:bg-slate-950"
                 >
                   <div className="flex items-center justify-between gap-4">

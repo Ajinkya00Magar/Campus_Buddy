@@ -49,9 +49,10 @@ export function validateChannelInput(data: {
   name: string
   type: string
 }): string | null {
-  if (!data.name.trim()) return 'Channel name is required'
-  if (!/^[a-z0-9-]+$/.test(data.name))
-    return 'Channel name can only contain lowercase letters, numbers, and hyphens'
+  const normalized = data.name.trim()
+  if (!normalized) return 'Channel name is required'
+  if (normalized.length > 80) return 'Channel name must be 80 characters or fewer'
+  if (/\r|\n/.test(normalized)) return 'Channel name cannot contain line breaks'
   if (!['academic', 'subject', 'club', 'official'].includes(data.type))
     return 'Invalid channel type'
   return null

@@ -96,12 +96,12 @@ export default function DashboardClient({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="space-y-6 lg:col-span-8">
           {/* Your Channels */}
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-3xl border border-sky-100 bg-sky-50/60 p-5 shadow-sm transition-colors">
             <div className="flex items-center justify-between px-1">
-              <h2 className="text-base font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-amber-500" /> Active Channels
+              <h2 className="text-base font-bold text-sky-800 uppercase tracking-widest flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-sky-500" /> Active Channels
               </h2>
-              <Link href="/channels" className="text-xs font-bold text-primary hover:underline uppercase tracking-tight">Browse all</Link>
+              <Link href="/channels" className="text-xs font-bold text-sky-700 hover:underline uppercase tracking-tight">Browse all</Link>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {yourChannels.length === 0 ? (
@@ -125,10 +125,10 @@ export default function DashboardClient({
           </section>
 
           {/* Upcoming Events */}
-          <section className="space-y-3">
+          <section className="space-y-3 rounded-3xl border border-amber-100 bg-amber-50/60 p-5 shadow-sm transition-colors">
             <div className="flex items-center justify-between px-1">
-              <h2 className="text-base font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-500" /> Campus Schedule
+              <h2 className="text-base font-bold text-amber-800 uppercase tracking-widest flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-amber-500" /> Campus Schedule
               </h2>
             </div>
             <div className="grid gap-3">
@@ -185,10 +185,10 @@ export default function DashboardClient({
           </Card>
 
           <div className="grid grid-cols-2 gap-3">
-             <QuickNav label="Profile" icon={Users2} href="/settings" />
-             <QuickNav label="Notifs" icon={Bell} href="/notifications" />
-             <QuickNav label="Map" icon={LayoutGrid} href="/channels" />
-             <QuickNav label="Help" icon={Star} href="/settings" />
+             <QuickNav label="Profile" icon={Users2} href="/settings" bg="bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100" />
+             <QuickNav label="Notifs" icon={Bell} href="/notifications" bg="bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100" />
+             <QuickNav label="Map" icon={LayoutGrid} href="/channels" bg="bg-sky-50 border-sky-100 text-sky-700 hover:bg-sky-100" />
+             <QuickNav label="Help" icon={Star} href="/settings" bg="bg-violet-50 border-violet-100 text-violet-700 hover:bg-violet-100" />
           </div>
         </div>
       </div>
@@ -196,10 +196,10 @@ export default function DashboardClient({
   )
 }
 
-function QuickNav({ label, icon: Icon, href }: { label: string, icon: any, href: string }) {
+function QuickNav({ label, icon: Icon, href, bg }: { label: string, icon: any, href: string, bg: string }) {
   return (
-    <Link href={href} className="flex flex-col items-center justify-center gap-2 rounded-2xl border bg-card p-5 transition-all hover:bg-accent text-muted-foreground hover:text-foreground group border-border hover:shadow-md hover:-translate-y-0.5">
-      <Icon className="h-5 w-5 group-hover:text-primary transition-all duration-300" />
+    <Link href={href} className={cn(`flex flex-col items-center justify-center gap-2 rounded-2xl border p-5 transition-all hover:shadow-md hover:-translate-y-0.5 group ${bg}`)}>
+      <Icon className="h-5 w-5 transition-all duration-300" />
       <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
     </Link>
   )

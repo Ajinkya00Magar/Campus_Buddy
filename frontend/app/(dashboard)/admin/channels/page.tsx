@@ -67,7 +67,7 @@ export default function AdminChannelsPage() {
     
     setCreating(true)
     const { error } = await createChannel({
-      name: form.name.toLowerCase().replace(/\s+/g, '-'),
+      name: form.name.trim(),
       description: form.description || undefined,
       type: form.type as any,
       department: form.department || undefined,
