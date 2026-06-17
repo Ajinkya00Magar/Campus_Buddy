@@ -29,8 +29,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 const dummyUsers = [
-  // ADMIN
+  // ADMINS
   { name: 'Admin User', email: '300000000001@mitaoe.ac.in', role: 'admin', department: 'IT', year: null },
+  { name: 'Puja Verma', email: 'pujaverma@mitaoe.ac.in', role: 'admin', department: 'IT', year: null },
   
   // PROFESSOR
   { name: 'Dr. Vikram Mehra', email: '200000000001@mitaoe.ac.in', role: 'professor', department: 'CSE', year: null },

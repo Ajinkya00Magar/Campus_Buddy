@@ -1,0 +1,21 @@
+-- ============================================================
+-- CREATE ADMIN USER
+-- ============================================================
+--
+-- Supabase Auth does not allow creating a password-auth user by
+-- inserting a plain `password` value into `auth.users` via SQL.
+-- The `auth.users` table does not expose a `password` column, so
+-- this operation must use the Supabase Admin API or the server-side
+-- script that calls `supabase.auth.admin.createUser()`.
+--
+-- Use the script instead:
+--   node scripts/seed_users.mjs
+--
+-- If you want to create just the app profile after the auth user
+-- exists, that can be done in SQL, but the auth user itself requires
+-- Supabase Admin API access.
+--
+-- The current SQL approach is not supported for password creation.
+-- ============================================================
+
+-- NOTE: Remove or ignore this file when using the script-based admin creation.
