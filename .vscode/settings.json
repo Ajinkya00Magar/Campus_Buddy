@@ -1,0 +1,16 @@
+{
+  // The .sql files in this repo are PostgreSQL / Supabase, NOT SQL Server.
+  // The Microsoft SQL Server (ms-mssql.mssql) extension parses .sql as T-SQL and
+  // flags valid Postgres (CREATE EXTENSION, $$…$$ blocks, RLS policies, IF NOT
+  // EXISTS, etc.) as thousands of false-positive "problems". Turn its T-SQL
+  // error-checking and IntelliSense off for this workspace — highlighting stays.
+  "mssql.intelliSense.enableErrorChecking": false,
+  "mssql.intelliSense.enableIntelliSense": false,
+  "mssql.intelliSense.enableSuggestions": false,
+  "mssql.intelliSense.enableQuickInfo": false,
+
+  // Ensure .sql files use the generic SQL language mode (not the mssql-specific one).
+  "files.associations": {
+    "*.sql": "sql"
+  }
+}

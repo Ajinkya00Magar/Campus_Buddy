@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { Users, Calendar, BookOpen, Hash, Users2, ArrowRight, Shield } from 'lucide-react'
+import { Users, Calendar, BookOpen, Hash, Users2, ArrowRight, Shield, ShieldAlert, BarChart3 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/utils'
 
@@ -20,6 +20,7 @@ export default async function AdminPage() {
     { count: coursesCount },
     { count: channelsCount },
     { count: clubsCount },
+    { count: openReportsCount },
     { data: recentUsers },
   ] = await Promise.all([
     supabase.from('users').select('*', { count: 'exact', head: true }),
@@ -27,6 +28,7 @@ export default async function AdminPage() {
     supabase.from('courses').select('*', { count: 'exact', head: true }),
     supabase.from('channels').select('*', { count: 'exact', head: true }),
     supabase.from('clubs').select('*', { count: 'exact', head: true }),
+    supabase.from('message_reports').select('*', { count: 'exact', head: true }).eq('status', 'open'),
     supabase.from('users').select('name, email, role, avatar_url, created_at').order('created_at', { ascending: false }).limit(5),
   ])
 
@@ -36,6 +38,11 @@ export default async function AdminPage() {
     { title: 'Courses',  count: coursesCount,  icon: BookOpen,     href: '/admin/courses',  color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-50 dark:bg-violet-900/20', border: 'border-violet-100 dark:border-violet-900/30' },
     { title: 'Channels', count: channelsCount, icon: Hash,         href: '/admin/channels', color: 'text-amber-600 dark:text-amber-400',  bg: 'bg-amber-50 dark:bg-amber-900/20',  border: 'border-amber-100 dark:border-amber-900/30' },
     { title: 'Clubs',    count: clubsCount,    icon: Users2,       href: '/admin/clubs',    color: 'text-rose-600 dark:text-rose-400',   bg: 'bg-rose-50 dark:bg-rose-900/20',   border: 'border-rose-100 dark:border-rose-900/30' },
+    { title: 'Reports',  count: openReportsCount, icon: ShieldAlert, href: '/admin/moderation', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-100 dark:border-red-900/30' },
+  ]
+
+  const quickLinks = [
+    { title: 'Analytics', desc: 'Activity, growth & busiest channels', icon: BarChart3, href: '/admin/analytics' },
   ]
 
   const roleColors: Record<string, string> = {
@@ -57,7 +64,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {stats.map(({ title, count, icon: Icon, href, color, bg, border }) => (
           <Link key={title} href={href}>
             <Card className={`hover:shadow-md transition-all cursor-pointer group border ${border}`}>
@@ -70,6 +77,26 @@ export default async function AdminPage() {
                   <p className="text-xs text-muted-foreground">{title}</p>
                   <ArrowRight className={`h-3 w-3 ${color} opacity-0 group-hover:opacity-100 transition-opacity`} />
                 </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* Quick links */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {quickLinks.map(({ title, desc, icon: Icon, href }) => (
+          <Link key={title} href={href}>
+            <Card className="group border hover:shadow-md transition-all cursor-pointer">
+              <CardContent className="flex items-center gap-3 py-4">
+                <div className="inline-flex p-2.5 rounded-lg bg-primary/10 group-hover:scale-110 transition-transform">
+                  <Icon className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-foreground">{title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{desc}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </CardContent>
             </Card>
           </Link>

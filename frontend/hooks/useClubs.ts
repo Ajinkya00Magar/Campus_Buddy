@@ -10,7 +10,7 @@ export function useClubs(initialClubs: Club[]) {
 
   useEffect(() => {
     setClubs(initialClubs)
-  }, [initialClubs])
+  }, [initialClubs.map(c => c.id).join(',')])
 
   useEffect(() => {
     const channelIdSuffix = Math.random().toString(36).slice(2, 8)

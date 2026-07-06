@@ -10,7 +10,7 @@ export function useEvents(initialEvents: Event[]) {
 
   useEffect(() => {
     setEvents(initialEvents)
-  }, [initialEvents])
+  }, [initialEvents.map(e => e.id).join(',')])
 
   useEffect(() => {
     const channelIdSuffix = Math.random().toString(36).slice(2, 8)

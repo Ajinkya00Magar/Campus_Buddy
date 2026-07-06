@@ -148,7 +148,7 @@ export default function SettingsClient({
     toast({ title: 'Certificate generated', description: 'Your certificate has been downloaded.' })
   }
 
-  const themeOptions: { value: ThemeOption; label: string; icon: React.ElementType }[] = [
+  const themeOptions: { value: ThemeOption; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
     { value: 'light', label: 'Light', icon: Sun },
     { value: 'dark',  label: 'Dark',  icon: Moon },
   ]

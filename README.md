@@ -1,131 +1,277 @@
-# 🎓 Campus Buddy..
+<div align="center">
 
-**A centralized, real-time campus platform for MIT Academy of Engineering**
+# 🎓 Campus Buddy
 
-Built with: **Next.js 15 · TypeScript · Tailwind CSS · Supabase**
+### The real-time campus super-app for **MIT Academy of Engineering**
+_WhatsApp-grade chat · Discord-style channels · Slack-level admin — built for one college, done right._
+
+[![Next.js](https://img.shields.io/badge/Next.js_15-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
+[![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)](#-progressive-web-app)
+
+**[Features](#-what-makes-it-cool) · [Quick Start](#-quick-start) · [Security Model](#-security-that-actually-holds) · [Architecture](#-architecture) · [Shortcuts](#-keyboard--power-user) · [Test Accounts](#-test-accounts)**
+
+</div>
 
 ---
 
-## ✨ Features
+## ⚡ Why Campus Buddy?
 
-| Module                   | Features                                                                                          |
-| ------------------------ | ------------------------------------------------------------------------------------------------- |
-| **Auth & RBAC**          | PRN email validation, 4-tier roles: **Student, Professor, CR, and Admin**.                        |
-| **Integrated Dashboard** | Compact overview with personalized greetings, quick stats, and relevant channels.                 |
-| **Real-time Channels**   | Discord-style unified sidebar, strict academic year filtering, private rooms, and file sharing.   |
-| **Advanced Chat**        | **Jump to Message** for pins/replies, emoji reactions, and modern bubble alignment.               |
-| **User Profiles**        | Custom **Profile Picture** uploads, verified identities for students, and role-based permissions. |
-| **Academics Hub**        | Integrated links to **PYQs** and **Notes** portals, plus module-based Courses.                    |
-| **Events & Clubs**       | Campus-wide event calendar with RSVP and comprehensive Club directories.                          |
-| **Admin Controls**       | Manage users, assign roles, assign FY/SY/TY student year categories, create private channels, and manage student memberships. |
+Scattered WhatsApp groups, lost PDFs, "which year's notice was that?" — Campus Buddy replaces all of it
+with **one place** where students, CRs, professors, and admins meet in real time. Every student sees
+exactly the channels for **their department and academic year** — no more, no less — and that boundary is
+enforced **in the database**, not just hidden in the UI.
+
+> **The one-line pitch:** a communication platform that _feels_ like WhatsApp, is _organized_ like Discord,
+> and is _governed_ like Slack — scoped to a single campus and locked down at every layer.
+
+---
+
+## 🌟 What Makes It Cool
+
+<table>
+<tr><td width="50%" valign="top">
+
+### 💬 Chat that feels alive
+- **Live presence** — see who's online (`N online`)
+- **Typing indicators** — "Aditi is typing…"
+- **Multi-emoji reactions**, replies, edits, pins
+- **Voice notes**, image/video/PDF/file sharing
+- **@mentions** + `@everyone` with autocomplete
+- **Polls** with live vote bars
+- **Infinite scroll** history + jump-to-message
+- **Starred messages** that sync across devices
+
+</td><td width="50%" valign="top">
+
+### 🛡️ Governed like a pro
+- **DB-enforced** year/department isolation (RLS)
+- **Announcement channels** — staff-only posting
+- **Report & moderation** console for admins
+- **Analytics dashboard** — activity, growth, top channels
+- **Rate limiting** — anti-flood at the database
+- **Upload guards** — size + MIME enforced
+- **Global ⌘K search** across channels/messages/people
+- **Web Push** — notified even when the app is closed
+
+</td></tr>
+</table>
+
+### 📲 Everywhere, instantly
+Installable **PWA** · mobile-first with true `100dvh` + safe-area handling · dark / light / charcoal themes ·
+60fps micro-interactions · full keyboard navigation.
+
+---
+
+## 🧩 Feature Matrix
+
+| Module | Highlights |
+| :--- | :--- |
+| **🔐 Auth & RBAC** | PRN-email login · 4 roles (**Student / CR / Professor / Admin**) · enforced frontend **+** middleware **+** backend **+** RLS |
+| **💬 Channels** | Department + year scoped · announcement-only mode · private rooms · file/media/voice sharing |
+| **⚡ Real-time** | Messages, reactions, polls, presence, typing, notifications — all live via Supabase Realtime |
+| **🔎 Search** | Global **⌘K** command palette — channels, messages, and people (RLS-scoped, injection-safe) |
+| **🔔 Notifications** | In-app center · browser notifications · **Web Push** (VAPID) for closed-app delivery |
+| **🛠️ Admin** | Manage users/roles/years, channels, clubs, events · **moderation** queue · **analytics** dashboard |
+| **📚 Academics** | Courses & modules · PYQs & Notes portals · learning-status tracking |
+| **🎉 Events & Clubs** | Campus calendar with RSVP · club directory with galleries |
+| **🎨 UX** | PWA install · dark/light/charcoal · Framer Motion · Material-3-inspired, glassy surfaces |
+
+---
+
+## 🔒 Security That Actually Holds
+
+Campus Buddy's headline guarantee — _a student can only ever touch their own year & department_ — is
+enforced at **every layer**, so bypassing the UI gets you nowhere:
+
+| Layer | What it does |
+| :--- | :--- |
+| **Frontend** | Filters the sidebar/lists so users only _see_ what's theirs (`channelVisibility.ts`) |
+| **Middleware** | Guards routes at the edge; redirects unauthenticated users, gates `/admin/*` |
+| **Backend** | Services validate ownership + inputs before writing |
+| **🧱 Row Level Security** | **The real boundary.** `can_access_channel()` / `can_post_channel()` mirror the app rules in Postgres — the API itself refuses cross-year/department reads and writes |
+
+Plus: server-side **rate limiting** on message inserts (anti-flood), **storage guards** (avatars ≤ 2 MB image-only,
+files ≤ 20 MB), **injection-safe** search, moderation with an audit trail, and a `SECURITY DEFINER` analytics
+layer that leaks nothing to non-admins.
+
+> 🧪 **Prove it yourself:** log in as a student and change the channel id in `/channels/<id>` to another
+> year's channel — you'll get **not-found**, because the database says no.
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+graph TD
+    U[👤 Browser / PWA] -->|"cookies + SSR"| MW[Next.js Middleware<br/>auth + route guards]
+    MW --> APP[Next.js 15 App Router]
+    APP -->|Server Components| SB[(Supabase Postgres)]
+    APP -->|"Realtime channels"| RT[Supabase Realtime]
+    APP -->|"/api/push/*"| WP[Web Push · VAPID]
+    SB -. "Row Level Security" .-> SB
+    RT -->|"messages · reactions · presence · typing"| U
+    WP -->|"push even when closed"| SW[Service Worker]
+```
+
+```text
+campus-buddy/
+├── frontend/                     # ✨ Next.js 15 app (runs from repo root: `next dev frontend`)
+│   ├── app/(dashboard)/          # 🔒 Protected pages — chat, admin, analytics, moderation
+│   ├── app/api/push/             # 🔔 Web Push subscribe / unsubscribe / send
+│   ├── components/               # 🧩 UI — channels/chat, layout, ui primitives
+│   ├── hooks/                    # 🎣 useMessages, usePresence, useNotifications, …
+│   ├── middleware.ts             # 🛡️ Edge auth + admin guards
+│   └── manifest.ts               # 📲 PWA manifest
+├── backend/                      # 🧠 Data + business logic
+│   ├── lib/                      # supabase clients, chat utils, webpush
+│   └── services/                 # channels · moderation · analytics · search · push
+├── database/
+│   └── schema.sql                # 🗄️ ONE authoritative, idempotent schema (RLS, RPCs, triggers)
+└── scripts/                      # 🤖 seeding & admin utilities
+```
+
+**Stack:** Next.js 15 (App Router) · React 18 · TypeScript · Tailwind CSS · Framer Motion ·
+Supabase (Postgres · Auth · Storage · Realtime) · `web-push` · deployed on Vercel.
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Clone & Install
-
+### 1 — Clone & install
 ```bash
 git clone <repo-url>
-cd campus-buddy
-npm install
+cd "Campus Buddy/Project Dir"
+npm install          # if peer-deps complain: npm install --legacy-peer-deps
 ```
 
-### 2. Create Supabase Project
-
-1. Go to [supabase.com](https://supabase.com) → New Project
-2. Copy your **Project URL** and **Anon Key**
-
-### 3. Set Environment Variables
-
+### 2 — Configure environment
 ```bash
 cp frontend/.env.example frontend/.env.local
 ```
+Fill in `frontend/.env.local` (see the [table below](#-environment-variables)).
 
-Edit `frontend/.env.local`:
+### 3 — Set up the database  ⚠️ _one file, that's it_
+Open **Supabase → SQL Editor** and run the entire **`database/schema.sql`**.
+It's **idempotent** (safe to re-run) and creates every table, index, RLS policy, trigger, storage
+bucket, and analytics function in one shot.
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
-
-### 4. Run Database Schema
-
-In **Supabase Dashboard → SQL Editor**, run the contents of:
-
-1. `database/schema.sql` (Base tables and RLS)
-2. `database/storage_setup.sql` (Storage buckets and permissions)
-3. `database/realtime_fix.sql` (Enhanced deletion sync)
-
-### 5. Create Dummy Data (Optional)
-
+### 4 — (Optional) seed demo data
 ```bash
-node scripts/seed_users.mjs
+node scripts/seed_users.mjs           # roles + sample students
+node scripts/seed_test_students.mjs   # dedicated FY / SY / TY set
+npm run create-admin                  # promote an admin
+```
+
+### 5 — Run it
+```bash
+npm run dev      # → http://localhost:3000
 ```
 
 ---
 
-## 🏗️ Project Structure
+## 🔑 Environment Variables
 
-```
-campus-buddy/
-├── frontend/                  # Next.js app and UI
-│   ├── app/(dashboard)/       # All protected pages (Dashboard, Admin, Chat)
-│   ├── components/
-│   │   ├── channels/chat/     # Modularized chat components (MessageList, Polls, etc.)
-│   │   └── layout/            # Sidebar (Integrated navigation), Navbar
-│   ├── hooks/                 # useUser, useMessages (Realtime), useNotifications
-│   └── types/                 # Unified TypeScript interfaces
-├── backend/                   # Data layer & Business logic
-│   ├── lib/
-│   │   ├── chat-utils.ts      # Heavy lifting for chat filtering & processing
-│   │   └── validations.ts     # PRN email + form validation
-│   └── services/              # Supabase data access layer
-├── database/                  # SQL Migrations & Final Schema
-└── scripts/                   # Seeding and maintenance scripts
-```
+| Variable | Required | Purpose |
+| :--- | :---: | :--- |
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Public anon key (browser) |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Server-only key (push send, admin scripts) — **never expose** |
+| `NEXT_PUBLIC_APP_URL` | ✅ | App base URL (e.g. `http://localhost:3000`) |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | ⭕ | Web Push public key (browser subscribes with it) |
+| `VAPID_PRIVATE_KEY` | ⭕ | Web Push **secret** — signs pushes server-side |
+| `VAPID_SUBJECT` | ⭕ | Contact `mailto:` or URL for the push service |
+
+> ⭕ = optional. Skip the VAPID keys and everything works — push simply no-ops until they're set.
+> Generate a pair with **`npx web-push generate-vapid-keys`**.
 
 ---
 
-## 🔐 Security & Access Control
+## ⌨️ Keyboard & Power-User
 
-- **Year-Based Isolation**: Students only see channels matching their PRN year (1-4).
-- **Admin Year Assignment**: Admins can assign students to FY/SY/TY categories from Manage Users to control which academic-year channels they can see.
-- **Developer Hub**: The `CB-DEV-TEAM` section contains the single `CB` development channel for team chat.
-- **Private Rooms**: Admins can create private channels and explicitly add specific students.
-- **Elevated Roles**: Professors and CRs can manage messages, create events, and moderate content.
-- **Real-time Sync**: Full `REPLICA IDENTITY` ensures deletions and updates sync instantly across all clients.
+| Shortcut | Action |
+| :--- | :--- |
+| `⌘ K` / `Ctrl K` | Open **global search** (channels · messages · people) |
+| `Enter` | Send message · `Shift+Enter` for a new line |
+| `@` | Mention autocomplete (`@everyone` supported) |
+| Right-click a message | Reply · React · Pin · Star · **Report** · Copy · Delete |
+| Scroll up in a channel | **Load older** messages (infinite history) |
+| Click a pin / reply preview | **Jump to** the original message |
+
+---
+
+## 📲 Progressive Web App
+
+Campus Buddy is an installable PWA — **Add to Home Screen** on Android/iOS for a full-screen, app-like
+experience. It ships a web manifest, a service worker for **Web Push**, `100dvh` + safe-area layouts for
+notched phones, and 44px touch targets throughout.
+
+---
+
+## 🧑‍💻 Scripts
+
+| Command | What it does |
+| :--- | :--- |
+| `npm run dev` | Start the dev server (`frontend`) |
+| `npm run build` | Production build |
+| `npm run start` | Serve the production build |
+| `npm run create-admin` | Promote/create an admin user |
+| `node scripts/seed_users.mjs` | Seed roles + sample students |
+| `node scripts/seed_test_students.mjs` | Seed FY / SY / TY students |
+| `node scripts/check_database.mjs` | Sanity-check the DB connection/tables |
 
 ---
 
 ## 🧪 Test Accounts
 
-All accounts use the password: `password123`
+All accounts use the password **`password123`**.
 
-| Role             | Email                          | Password      |
-| ---------------- | ------------------------------ | ------------- |
-| **Admin**        | `300000000001@mitaoe.ac.in`    | `password123` |
-| **Professor**    | `200000000001@mitaoe.ac.in`    | `password123` |
-| **CR**           | `100000000004@mitaoe.ac.in`    | `password123` |
-| **Student (Y2)** | `100000000001@mitaoe.ac.in`    | `password123` |
-| **Student (Y3)** | `100000000002@mitaoe.ac.in`    | `password123` |
-| **Student (Y1)** | `100000000003@mitaoe.ac.in`    | `password123` |
-| **FY Student**   | `fy.student@test.mitaoe.ac.in` | `password123` |
-| **SY Student**   | `sy.student@test.mitaoe.ac.in` | `password123` |
-| **TY Student**   | `ty.student@test.mitaoe.ac.in` | `password123` |
-
-_You can generate these accounts automatically using `node scripts/seed_users.mjs`._
-_You can also seed a dedicated FY/SY/TY student set using `node scripts/seed_test_students.mjs`._
+| Role | Email |
+| :--- | :--- |
+| 👑 **Admin** | `300000000001@mitaoe.ac.in` |
+| 👨‍🏫 **Professor** | `200000000001@mitaoe.ac.in` |
+| 🗣️ **CR** | `100000000004@mitaoe.ac.in` |
+| 🎓 **Student (Y2)** | `100000000001@mitaoe.ac.in` |
+| 🎓 **Student (Y3)** | `100000000002@mitaoe.ac.in` |
+| 🎓 **Student (Y1)** | `100000000003@mitaoe.ac.in` |
+| 🎒 **FY / SY / TY** | `fy.student@` · `sy.student@` · `ty.student@test.mitaoe.ac.in` |
 
 ---
 
-## 🚢 Deploy
+## 🚢 Deploy (Vercel)
 
-This project is optimized for **Vercel**.
+1. Push to GitHub and import the repo into **Vercel**.
+2. Add all [environment variables](#-environment-variables) in Vercel → Settings.
+3. Run **`database/schema.sql`** once in your production Supabase project.
+4. In Supabase **Auth → URL Configuration**, add your production domain.
+5. **Deploy.** 🚀
 
-1. Push to GitHub.
-2. Connect repository to Vercel.
-3. Add Environment Variables.
-4. Update Supabase Auth URLs to your production domain.
+> 💡 Use Supabase's **Supavisor pooled connection** (port `6543`) for serverless scale.
+
+---
+
+## 🗺️ Roadmap
+
+**✅ Shipped:** DB-enforced RBAC · presence & typing · multi-emoji reactions · synced stars ·
+global search · announcement channels · reporting & moderation · analytics dashboard ·
+installable PWA · Web Push · message pagination · rate limiting · mobile/safe-area polish.
+
+**🔜 Considered / deferred:**
+- 🧵 Threaded replies _(inline quoted replies ship today; true threads are a deliberate next step)_
+- 🤖 `@buddy` AI assistant trained on PYQs & Notes
+- 📅 Calendar sync (Google / Apple) for events
+
+_(Per-message read receipts were intentionally dropped — channel-level unread counts already cover it
+without the write amplification at scale.)_
+
+---
+
+<div align="center">
+
+**Built with ❤️ for MIT Academy of Engineering**
+
+_Preserve what's good, harden what's weak, ship what students actually use._
+
+</div>

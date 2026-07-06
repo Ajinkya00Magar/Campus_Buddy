@@ -21,15 +21,30 @@ export async function getChannel(id: string): Promise<Channel | null> {
   return data
 }
 
-export async function getMessages(channelId: string): Promise<Message[]> {
+export const MESSAGE_PAGE_SIZE = 50
+
+/**
+ * Loads a page of messages newest-first from the DB, then returns them in
+ * ascending (display) order. Pass `before` (an ISO created_at cursor) to
+ * fetch the page immediately older than what you already have.
+ */
+export async function getMessages(
+  channelId: string,
+  opts: { before?: string; limit?: number } = {}
+): Promise<Message[]> {
   const supabase = createClient()
-  const { data } = await supabase
+  const limit = opts.limit ?? MESSAGE_PAGE_SIZE
+  let query = supabase
     .from('messages')
     .select('*, users(name, avatar_url, role)')
     .eq('channel_id', channelId)
-    .order('created_at', { ascending: true })
-    .limit(100)
-  return data ?? []
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (opts.before) query = query.lt('created_at', opts.before)
+
+  const { data } = await query
+  return (data ?? []).reverse()
 }
 
 export async function sendMessage(payload: {
@@ -93,7 +108,15 @@ export async function sendMessage(payload: {
         }
 
         if (notificationsToInsert.length > 0) {
-          await supabase.from('notifications').insert(notificationsToInsert)
+          const { data: inserted } = await supabase
+            .from('notifications')
+            .insert(notificationsToInsert)
+            .select('id')
+          if (inserted && inserted.length > 0) {
+            // Fan out Web Push for recipients whose browser/app is closed.
+            const { triggerPush } = await import('@/services/push.service')
+            triggerPush(inserted.map((n) => n.id))
+          }
         }
       }
     }
@@ -131,27 +154,43 @@ export async function pinMessage(messageId: string, pin: boolean) {
   return { error }
 }
 
+export const MAX_CHANNEL_FILE_BYTES = 20 * 1024 * 1024 // 20 MB
+export const MAX_AVATAR_BYTES = 2 * 1024 * 1024 // 2 MB
+const AVATAR_MIME = /^image\/(png|jpe?g|webp|gif|avif)$/i
+
+function sanitizeExt(name: string) {
+  const ext = name.split('.').pop()?.toLowerCase() ?? 'bin'
+  return ext.replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin'
+}
+
 export async function uploadFile(file: File, channelId: string) {
+  if (file.size > MAX_CHANNEL_FILE_BYTES) {
+    return { url: null, error: { message: `File is too large (max ${Math.round(MAX_CHANNEL_FILE_BYTES / 1024 / 1024)} MB).` } as { message: string } }
+  }
   const supabase = createClient()
-  const ext = file.name.split('.').pop()
-  const path = `${channelId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const path = `${channelId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${sanitizeExt(file.name)}`
   const { error } = await supabase.storage
     .from('channel-files')
-    .upload(path, file)
+    .upload(path, file, { contentType: file.type || undefined })
   if (error) return { url: null, error }
   const { data } = supabase.storage.from('channel-files').getPublicUrl(path)
   return { url: data.publicUrl, error: null }
 }
 
 export async function uploadAvatar(file: File, userId: string) {
+  if (!AVATAR_MIME.test(file.type)) {
+    return { url: null, error: { message: 'Avatar must be a PNG, JPG, WEBP, GIF or AVIF image.' } as { message: string } }
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    return { url: null, error: { message: `Avatar is too large (max ${Math.round(MAX_AVATAR_BYTES / 1024 / 1024)} MB).` } as { message: string } }
+  }
   const supabase = createClient()
-  const ext = file.name.split('.').pop()
-  const path = `${userId}/${Date.now()}.${ext}`
-  
+  const path = `${userId}/${Date.now()}.${sanitizeExt(file.name)}`
+
   const { error } = await supabase.storage
     .from('avatars')
-    .upload(path, file, { upsert: true })
-    
+    .upload(path, file, { upsert: true, contentType: file.type || undefined })
+
   if (error) return { url: null, error }
   
   const { data } = supabase.storage.from('avatars').getPublicUrl(path)
@@ -167,16 +206,21 @@ export async function uploadAvatar(file: File, userId: string) {
 
 export async function deleteAvatar(userId: string) {
   const supabase = createClient()
-  
-  // 1. Set avatar_url to null in public.users
+
+  // 1. Remove the stored objects under this user's folder (avoids orphans).
+  const { data: files } = await supabase.storage.from('avatars').list(userId)
+  if (files && files.length > 0) {
+    await supabase.storage
+      .from('avatars')
+      .remove(files.map((f) => `${userId}/${f.name}`))
+  }
+
+  // 2. Clear the profile URL.
   const { error: profileError } = await supabase
     .from('users')
     .update({ avatar_url: null })
     .eq('id', userId)
-    
-  // 2. We don't necessarily need to delete from storage immediately 
-  // but we could if we wanted to be clean. For now, nulling the profile is enough.
-  
+
   return { error: profileError }
 }
 
@@ -187,6 +231,7 @@ export async function createChannel(payload: {
   department?: string
   year?: number
   is_private?: boolean
+  post_policy?: 'everyone' | 'staff'
   created_by: string
 }) {
   const supabase = createClient()
@@ -284,14 +329,16 @@ export async function getMessageReactions(channelId: string): Promise<MessageRea
 
 export async function toggleMessageReaction(messageId: string, userId: string, emoji: string) {
   const supabase = createClient()
+  // Multiple distinct emojis per user are allowed; toggle just this emoji.
   const { data: existing } = await supabase
     .from('message_reactions')
-    .select('id, emoji')
+    .select('id')
     .eq('message_id', messageId)
     .eq('user_id', userId)
+    .eq('emoji', emoji)
     .maybeSingle()
 
-  if (existing?.emoji === emoji) {
+  if (existing) {
     const { error } = await supabase
       .from('message_reactions')
       .delete()
@@ -301,10 +348,7 @@ export async function toggleMessageReaction(messageId: string, userId: string, e
 
   const { error } = await supabase
     .from('message_reactions')
-    .upsert(
-      { message_id: messageId, user_id: userId, emoji },
-      { onConflict: 'message_id,user_id' }
-    )
+    .insert({ message_id: messageId, user_id: userId, emoji })
   return { error }
 }
 
@@ -323,6 +367,37 @@ export async function voteOnPoll(
     .select()
     .single()
   return { data, error }
+}
+
+// ── Bookmarks (starred messages, DB-backed so they sync across devices) ──
+
+export async function getBookmarkedMessageIds(userId: string, channelId?: string): Promise<string[]> {
+  const supabase = createClient()
+  let query = supabase
+    .from('bookmarks')
+    .select('message_id, messages!inner(channel_id)')
+    .eq('user_id', userId)
+  if (channelId) query = query.eq('messages.channel_id', channelId)
+  const { data } = await query
+  return (data ?? []).map((row) => row.message_id as string)
+}
+
+export async function toggleBookmark(userId: string, messageId: string) {
+  const supabase = createClient()
+  const { data: existing } = await supabase
+    .from('bookmarks')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('message_id', messageId)
+    .maybeSingle()
+
+  if (existing) {
+    const { error } = await supabase.from('bookmarks').delete().eq('id', existing.id)
+    return { error, starred: false }
+  }
+
+  const { error } = await supabase.from('bookmarks').insert({ user_id: userId, message_id: messageId })
+  return { error, starred: true }
 }
 
 export async function getChannelStats(channelId: string): Promise<ChannelStats> {
@@ -370,17 +445,14 @@ export async function getUserChannelMembers(userId: string) {
 
 export async function updateChannelMemberPrefs(channelId: string, userId: string, payload: { last_read_at?: string, muted?: boolean }) {
   const supabase = createClient()
-  // First try to select existing to avoid losing joined_at
-  const { data: existing } = await supabase.from('channel_members').select('*').eq('channel_id', channelId).eq('user_id', userId).maybeSingle()
-  
+  // Upsert only the keys we're changing; existing columns (joined_at) are
+  // preserved by the DB on conflict, so no extra read round-trip is needed.
   const { data, error } = await supabase
     .from('channel_members')
-    .upsert({ 
-      channel_id: channelId, 
-      user_id: userId, 
-      ...existing,
-      ...payload 
-    }, { onConflict: 'channel_id,user_id' })
+    .upsert(
+      { channel_id: channelId, user_id: userId, ...payload },
+      { onConflict: 'channel_id,user_id', ignoreDuplicates: false }
+    )
     .select()
     .single()
   return { data, error }

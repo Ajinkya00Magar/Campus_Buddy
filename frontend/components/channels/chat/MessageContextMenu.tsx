@@ -1,6 +1,6 @@
 import { useState, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { Plus, Info, Reply, Copy, Forward, Pin, PinOff, Star, SquareCheck, Save, Share2, Edit3, Trash2 } from 'lucide-react'
+import { Plus, Info, Reply, Copy, Forward, Pin, PinOff, Star, SquareCheck, Save, Share2, Edit3, Trash2, Flag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Message } from '@/types'
 import type { MessageContextMenuState } from '@/lib/chat-utils'
@@ -19,6 +19,7 @@ export function MessageContextMenu({
   onCopy,
   onStar,
   onReact,
+  onReport,
 }: {
   state: MessageContextMenuState
   canPin: boolean
@@ -31,6 +32,7 @@ export function MessageContextMenu({
   onCopy: (message: Message) => void
   onStar: (messageId: string) => void
   onReact: (messageId: string, emoji: string) => void
+  onReport: (message: Message) => void
 }) {
   const { message, isMine, isStarred } = state
   const canManage = isMine || ['admin', 'professor', 'cr'].includes(currentUserRole)
@@ -108,6 +110,7 @@ export function MessageContextMenu({
     { label: 'Save as', icon: <Save className="h-4 w-4" />, action: saveAs, show: Boolean(message.file_url) },
     { label: 'Share', icon: <Share2 className="h-4 w-4" />, action: share, show: true },
     { label: 'Edit', icon: <Edit3 className="h-4 w-4" />, action: () => onEdit(message), show: canManage && Boolean(message.content), divider: true },
+    { label: 'Report', icon: <Flag className="h-4 w-4" />, action: () => onReport(message), show: !isMine, divider: !canManage },
     { label: 'Delete', icon: <Trash2 className="h-4 w-4" />, action: () => onDelete(message), show: canManage },
   ]
 

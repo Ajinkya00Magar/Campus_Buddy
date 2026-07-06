@@ -1,13 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import DashboardClient from './DashboardClient'
 import { filterChannelsForUser } from '@/utils/channelVisibility'
+import { getUserProfile, getChannels } from '@/lib/data'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()
+  const profile = await getUserProfile(user.id)
 
   const [
     { count: eventsCount },
@@ -15,7 +16,7 @@ export default async function DashboardPage() {
     { count: coursesCount },
     { data: events },
     { data: courses },
-    { data: channels },
+    channels,
     { data: completions },
   ] = await Promise.all([
     supabase.from('events').select('*', { count: 'exact', head: true }).eq('is_published', true),
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
       .eq('is_published', true)
       .order('created_at', { ascending: false })
       .limit(10),
-    supabase.from('channels').select('*').order('type', { ascending: false }).limit(100),
+    getChannels(),
     supabase.from('course_completions').select('course_id').eq('user_id', user.id),
   ])
 

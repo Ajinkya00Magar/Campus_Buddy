@@ -148,6 +148,7 @@ export function MessageList({
   onCopy,
   onStar,
   onReact,
+  onReport,
   onVote,
   onJump,
   reactionGroups,
@@ -165,6 +166,7 @@ export function MessageList({
   onCopy: (message: Message) => void
   onStar: (messageId: string) => void
   onReact: (messageId: string, emoji: string) => void
+  onReport: (message: Message) => void
   onVote: (pollId: string, optionIdx: number) => void
   onJump: (id: string) => void
   reactionGroups: Map<string, ReactionSummary[]>
@@ -402,6 +404,7 @@ export function MessageList({
           onCopy={onCopy}
           onStar={onStar}
           onReact={onReact}
+          onReport={onReport}
         />
       )}
     </div>

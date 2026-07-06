@@ -4,16 +4,21 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
+import { createClient as createBrowserSupabase } from '@/lib/supabase/client'
+import { reportMessage } from '@/services/moderation.service'
 import { useMessages } from '@/hooks/useMessages'
+import { usePresence } from '@/hooks/usePresence'
 import {
   createPoll,
   deleteMessage,
+  getBookmarkedMessageIds,
   getChannelMembers,
   getChannelPolls,
   getChannelStats,
   getMessageReactions,
   pinMessage,
   sendMessage,
+  toggleBookmark,
   toggleMessageReaction,
   updateMessage,
   uploadFile,
@@ -38,6 +43,7 @@ import {
   Download,
   File as FileIcon,
   FileText,
+  Flag,
   Forward,
   GraduationCap,
   Headphones,
@@ -76,6 +82,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
 
 const typeMeta: Record<ChannelType, { icon: ReactNode; label: string; tone: string }> = {
   academic: {
@@ -137,7 +151,6 @@ import {
   filterMessages,
   filterPolls,
   groupReactions,
-  starredStorageKey,
   getFileKind,
   extractLinks,
   previewLabel,
@@ -166,7 +179,17 @@ export default function ChannelPageClient({
   allChannels: Channel[]
 }) {
   const { toast } = useToast()
-  const { messages, loading, bottomRef, setMessages, scrollToBottom } = useMessages(channel.id)
+  const supabase = useMemo(() => createBrowserSupabase(), [])
+  const { messages, loading, loadingOlder, hasMore, loadOlder, bottomRef, setMessages, scrollToBottom } = useMessages(channel.id)
+  const presenceUser = useMemo(
+    () => (currentUser ? { id: currentUser.id, name: currentUser.name } : null),
+    [currentUser]
+  )
+  const { onlineCount, typingUsers, sendTyping, stopTyping } = usePresence(channel.id, presenceUser)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  // Remembers scroll geometry across a "load older" prepend so we can keep
+  // the viewport anchored on the same message instead of jumping.
+  const prevScrollRef = useRef<{ height: number; top: number } | null>(null)
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -189,6 +212,9 @@ export default function ChannelPageClient({
   const [channelMembers, setChannelMembers] = useState<any[]>([])
   const [mentionQuery, setMentionQuery] = useState<{ query: string, startIdx: number } | null>(null)
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0)
+  const [reportTarget, setReportTarget] = useState<Message | null>(null)
+  const [reportReason, setReportReason] = useState('')
+  const [reporting, setReporting] = useState(false)
 
   const documentRef = useRef<HTMLInputElement>(null)
   const mediaRef = useRef<HTMLInputElement>(null)
@@ -199,7 +225,10 @@ export default function ChannelPageClient({
   const audioChunksRef = useRef<Blob[]>([])
 
   const pinned = messages.find((m) => m.is_pinned)
-  const canPin = currentUser?.role === 'admin' || currentUser?.role === 'professor' || currentUser?.role === 'cr'
+  const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'professor' || currentUser?.role === 'cr'
+  const canPin = isStaff
+  // Announcement-only channels (post_policy === 'staff') accept posts from staff only.
+  const canPost = isStaff || channel.post_policy !== 'staff'
   const meta = typeMeta[channel.type]
   const reactionGroups = useMemo(() => groupReactions(reactions, currentUser?.id), [reactions, currentUser?.id])
   const messageById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages])
@@ -253,10 +282,30 @@ export default function ChannelPageClient({
       .slice(0, 10) // Limit to 10
   }, [mentionQuery, channelMembers, currentUser?.id])
 
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const el = event.currentTarget
+    if (el.scrollTop <= 80 && hasMore && !loadingOlder) {
+      prevScrollRef.current = { height: el.scrollHeight, top: el.scrollTop }
+      loadOlder()
+    }
+  }
+
+  // After a "load older" prepend, keep the viewport on the same message.
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el || !prevScrollRef.current) return
+    const delta = el.scrollHeight - prevScrollRef.current.height
+    if (delta > 0) el.scrollTop = prevScrollRef.current.top + delta
+    prevScrollRef.current = null
+  }, [messages.length])
+
   useEffect(() => {
     if (!currentUser) return
-    const stored = window.localStorage.getItem(starredStorageKey(channel.id, currentUser.id))
-    setStarredIds(stored ? JSON.parse(stored) : [])
+    let active = true
+    getBookmarkedMessageIds(currentUser.id, channel.id).then((ids) => {
+      if (active) setStarredIds(ids)
+    })
+    return () => { active = false }
   }, [channel.id, currentUser])
 
   useEffect(() => {
@@ -274,27 +323,50 @@ export default function ChannelPageClient({
 
   useEffect(() => {
     let active = true
-    const refresh = async () => {
-      const [nextReactions, nextPolls, nextStats, membersRes] = await Promise.all([
-        getMessageReactions(channel.id),
+    const refreshReactions = async () => {
+      const next = await getMessageReactions(channel.id)
+      if (active) setReactions(next)
+    }
+    const refreshRest = async () => {
+      const [nextPolls, nextStats, membersRes] = await Promise.all([
         getChannelPolls(channel.id),
         getChannelStats(channel.id),
         getChannelMembers(channel.id),
       ])
       if (!active) return
-      setReactions(nextReactions)
       setPolls(nextPolls as Poll[])
       setStats(nextStats)
       if (membersRes.data) setChannelMembers(membersRes.data)
     }
 
-    refresh()
-    const interval = window.setInterval(refresh, 10000)
+    refreshReactions()
+    refreshRest()
+
+    // Reactions/poll votes are realtime; a scoped refetch keeps the joined
+    // author metadata (needed for tooltips) accurate without blind polling.
+    let scheduled = false
+    const scheduleReactionRefresh = () => {
+      if (scheduled) return
+      scheduled = true
+      window.setTimeout(() => { scheduled = false; refreshReactions() }, 250)
+    }
+    const suffix = Math.random().toString(36).slice(2, 8)
+    const live = supabase
+      .channel(`chat-side:${channel.id}:${suffix}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, scheduleReactionRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, () => { if (active) refreshRest() })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'polls', filter: `channel_id=eq.${channel.id}` }, () => { if (active) refreshRest() })
+      .subscribe()
+
+    // Low-frequency fallback for stats/members (membership changes are rare).
+    const interval = window.setInterval(refreshRest, 60000)
     return () => {
       active = false
       window.clearInterval(interval)
+      supabase.removeChannel(live)
     }
-  }, [channel.id, messages.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id])
 
   useEffect(() => {
     if (!currentUser) return
@@ -315,6 +387,7 @@ export default function ChannelPageClient({
   const handleSend = async () => {
     const content = text.trim()
     if (!content || !currentUser || sending) return
+    stopTyping()
 
     if (editing) {
       setSending(true)
@@ -449,15 +522,43 @@ export default function ChannelPageClient({
     toast({ title: 'Copied' })
   }
 
-  const handleStar = (messageId: string) => {
-    if (!currentUser) return
-    setStarredIds((prev) => {
-      const next = prev.includes(messageId)
-        ? prev.filter((id) => id !== messageId)
-        : [...prev, messageId]
-      window.localStorage.setItem(starredStorageKey(channel.id, currentUser.id), JSON.stringify(next))
-      return next
+  const handleReport = (message: Message) => {
+    if (message.id.startsWith('pending-')) return
+    setReportReason('')
+    setReportTarget(message)
+  }
+
+  const submitReport = async () => {
+    if (!reportTarget || !currentUser || reporting) return
+    setReporting(true)
+    const { error, duplicate } = await reportMessage(reportTarget.id, currentUser.id, reportReason)
+    setReporting(false)
+    if (error) {
+      toast({ title: 'Could not submit report', description: error.message, variant: 'destructive' })
+      return
+    }
+    setReportTarget(null)
+    setReportReason('')
+    toast({
+      title: duplicate ? 'Already reported' : 'Reported to moderators',
+      description: duplicate ? 'You have already flagged this message.' : 'Thanks — our team will review it.',
     })
+  }
+
+  const handleStar = async (messageId: string) => {
+    if (!currentUser || messageId.startsWith('pending-')) return
+    const wasStarred = starredIds.includes(messageId)
+    // Optimistic toggle
+    setStarredIds((prev) =>
+      wasStarred ? prev.filter((id) => id !== messageId) : [...prev, messageId]
+    )
+    const { error } = await toggleBookmark(currentUser.id, messageId)
+    if (error) {
+      setStarredIds((prev) =>
+        wasStarred ? [...prev, messageId] : prev.filter((id) => id !== messageId)
+      )
+      toast({ title: 'Could not update star', description: error.message, variant: 'destructive' })
+    }
   }
 
   const handleReaction = async (messageId: string, emoji: string) => {
@@ -582,6 +683,8 @@ export default function ChannelPageClient({
     const val = e.target.value
     setText(val)
 
+    if (val.trim() && !editing) sendTyping()
+
     const cursor = e.target.selectionStart
     const textBeforeCursor = val.slice(0, cursor)
     
@@ -704,7 +807,9 @@ export default function ChannelPageClient({
               {channel.is_private && <LockIcon className="h-3 w-3 text-muted-foreground shrink-0" />}
               <div className="hidden sm:flex items-center gap-1.5 ml-1">
                 <span className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">Live</span>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
+                  {onlineCount > 1 ? `${onlineCount} online` : 'Live'}
+                </span>
               </div>
             </div>
             <p className="hidden md:block truncate text-[11px] text-muted-foreground leading-none mt-0.5">
@@ -837,7 +942,16 @@ export default function ChannelPageClient({
               </div>
             )}
 
-            <div className="relative flex-1 overflow-y-auto px-4 py-4 custom-scrollbar bg-background/50 min-h-0">
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="relative flex-1 overflow-y-auto px-4 py-4 custom-scrollbar bg-background/50 min-h-0"
+            >
+              {loadingOlder && (
+                <div className="mb-3 flex items-center justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
               {loading ? (
                 <MessageSkeleton />
               ) : messages.length === 0 && polls.length === 0 ? (
@@ -858,6 +972,7 @@ export default function ChannelPageClient({
                   onCopy={handleCopy}
                   onStar={handleStar}
                   onReact={handleReaction}
+                  onReport={handleReport}
                   onVote={handleVote}
                   onJump={jumpToMessage}
                   reactionGroups={reactionGroups}
@@ -867,11 +982,28 @@ export default function ChannelPageClient({
               <div ref={bottomRef} />
             </div>
 
-            <footer className="border-t bg-card px-4 py-3 shrink-0 z-30 relative">
+            <footer className="border-t bg-card px-4 py-3 pb-safe-plus shrink-0 z-30 relative">
               {(sending || uploading || recording) && (
                 <div className="animate-fade-up mb-2 flex items-center gap-2 border bg-primary/5 px-2.5 py-1.5 text-xs font-medium text-primary">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   {recording ? 'Recording voice note' : uploading ? `Uploading ${uploadName}` : editing ? 'Saving edit' : 'Sending message'}
+                </div>
+              )}
+
+              {typingUsers.length > 0 && (
+                <div className="mb-2 flex items-center gap-2 px-1 text-xs text-muted-foreground animate-fade-in">
+                  <span className="flex gap-0.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60 animate-bounce" />
+                  </span>
+                  <span className="truncate">
+                    {typingUsers.length === 1
+                      ? `${typingUsers[0].name} is typing…`
+                      : typingUsers.length === 2
+                        ? `${typingUsers[0].name} and ${typingUsers[1].name} are typing…`
+                        : `${typingUsers[0].name} and ${typingUsers.length - 1} others are typing…`}
+                  </span>
                 </div>
               )}
 
@@ -898,6 +1030,12 @@ export default function ChannelPageClient({
                 </div>
               )}
 
+              {!canPost ? (
+                <div className="flex items-center justify-center gap-2 rounded-md border border-dashed bg-muted/40 px-4 py-3 text-center text-sm text-muted-foreground">
+                  <LockIcon className="h-4 w-4 shrink-0" />
+                  <span>Only admins and faculty can post in this announcement channel.</span>
+                </div>
+              ) : (
               <div className="flex items-end gap-1.5 border bg-background p-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/20">
                 <input ref={documentRef} type="file" className="hidden" onChange={handleFile} />
                 <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFile} />
@@ -971,6 +1109,7 @@ export default function ChannelPageClient({
                   </button>
                 </div>
               </div>
+              )}
             </footer>
           </div>
 
@@ -988,6 +1127,39 @@ export default function ChannelPageClient({
             />
           )}
         </div>
+
+        <Dialog open={!!reportTarget} onOpenChange={(o) => { if (!o) setReportTarget(null) }}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Report message</DialogTitle>
+              <DialogDescription>
+                Flag this message for the moderation team. Reports are private.
+              </DialogDescription>
+            </DialogHeader>
+            {reportTarget && (
+              <div className="rounded-md border bg-muted/40 p-2.5 text-sm text-muted-foreground">
+                <p className="line-clamp-3">{reportTarget.content ?? reportTarget.file_name ?? 'Shared file'}</p>
+                <p className="mt-1 text-xs">— {reportTarget.users?.name ?? 'Unknown'}</p>
+              </div>
+            )}
+            <Textarea
+              placeholder="Why are you reporting this? (optional)"
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              rows={3}
+              className="bg-background"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setReportTarget(null)} disabled={reporting}>
+                Cancel
+              </Button>
+              <Button onClick={submitReport} disabled={reporting} className="gap-2">
+                {reporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flag className="h-4 w-4" />}
+                Submit report
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { Sparkles, Code2, Users2 } from 'lucide-react'
 import YearDisclosure from '@/components/channels/YearDisclosure'
 import { filterChannelsForUser, getVisibleChannelYears, isYearChannel } from '@/utils/channelVisibility'
 import type { Channel } from '@/types'
@@ -25,18 +26,24 @@ export default async function ChannelsPage() {
   const visibleYears = getVisibleChannelYears(profile)
 
   return (
-    <div className="space-y-8 px-4 pb-10 md:px-6 lg:px-8">
-      <div className="rounded-[2rem] border bg-card p-8 shadow-sm">
-        <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/80">Curriculum channels</p>
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+    <div className="mx-auto max-w-7xl space-y-7 px-4 pb-10 md:px-0 lg:px-0">
+      {/* Header section similar to Spatial UI */}
+      <section className="relative overflow-hidden rounded-[2.5rem] bg-card/60 backdrop-blur-3xl border border-white/20 p-6 shadow-[0_24px_80px_rgba(236,72,153,0.12)] dark:border-white/10 dark:shadow-[0_24px_80px_rgba(0,0,0,0.3)] md:p-8 animate-in fade-in slide-in-from-top-4 duration-700">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-pink-400/40 to-transparent" />
+        <div className="absolute -right-12 -top-16 h-44 w-44 rounded-full border border-pink-400/20 bg-pink-400/10 blur-sm animate-floaty" />
+        <div className="relative max-w-3xl z-10">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-pink-500/15 bg-pink-500/10 px-3 py-1 text-xs font-bold text-pink-600 dark:text-pink-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            Curriculum channels
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground md:text-4xl">
             Browse subject channels for your year
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
             Computer Science Engineering subject channels are organized by academic year. Year notices are available inside each year section below — not in the sidebar.
           </p>
         </div>
-      </div>
+      </section>
 
       <div className="grid gap-6">
         {visibleYears.map((year) => (
@@ -48,57 +55,66 @@ export default async function ChannelsPage() {
           />
         ))}
 
-        <section className="overflow-hidden rounded-[1.5rem] border bg-card shadow-[0_18px_60px_rgba(15,23,42,0.08)] transition-all duration-500 dark:shadow-none">
-          <div className="p-6">
+        <section className="relative overflow-hidden rounded-[2.5rem] bg-card/60 backdrop-blur-3xl border border-white/20 p-6 shadow-[0_24px_80px_rgba(249,115,22,0.12)] dark:border-white/10 dark:shadow-[0_24px_80px_rgba(0,0,0,0.3)] transition-all duration-500 mt-4 md:p-8">
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-orange-400/40 to-transparent" />
+          <div className="absolute -left-12 -bottom-16 h-44 w-44 rounded-full border border-orange-400/20 bg-orange-400/10 blur-sm animate-floaty" />
+          
+          <div className="relative z-10">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/80">CB-DEV-TEAM</p>
-                <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-foreground">Development channel</h2>
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-500/15 bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-600 dark:text-orange-300">
+                  <Code2 className="h-3.5 w-3.5" />
+                  CB-DEV-TEAM
+                </div>
+                <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Development channel</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
                   All development-related chats are carried out here in the CB channel.
                 </p>
               </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-foreground dark:border-slate-700 dark:bg-slate-950">
+              <div className="rounded-full border border-orange-500/20 bg-orange-500/5 px-4 py-2 text-xs font-bold uppercase tracking-widest text-orange-600 dark:text-orange-300 shadow-sm backdrop-blur-sm">
                 1 channel
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-8">
               {devChannel ? (
                 <Link
                   href={`/channels/${devChannel.id}`}
-                  className="group block rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-primary/40 hover:shadow-lg dark:border-slate-700 dark:bg-slate-950"
+                  className="group relative block overflow-hidden rounded-[2rem] bg-white/40 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/10 p-6 shadow-lg transition-all duration-500 hover:-translate-y-1 hover:shadow-xl hover:border-orange-500/40"
                 >
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  
+                  <div className="relative z-10 flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">CB</p>
-                      <h3 className="mt-2 text-2xl font-bold text-foreground">CB development chat</h3>
-                      <p className="mt-2 text-sm text-muted-foreground">This single channel is reserved for all team development discussions.</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-orange-500">CB</p>
+                      <h3 className="mt-1 text-2xl font-bold text-foreground group-hover:text-orange-600 transition-colors">CB development chat</h3>
+                      <p className="mt-2 text-sm text-muted-foreground font-medium">This single channel is reserved for all team development discussions.</p>
                     </div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-3xl bg-primary text-primary-foreground">
-                      CB
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-500 text-white shadow-lg shadow-orange-500/20">
+                      <Code2 className="h-6 w-6" />
                     </div>
                   </div>
-                  <div className="mt-6 flex items-center justify-between gap-4 text-sm font-semibold text-primary transition group-hover:text-primary/90">
+                  <div className="relative z-10 mt-6 flex items-center justify-between gap-4 text-[10px] font-bold uppercase tracking-widest text-orange-500 transition group-hover:text-orange-600">
                     <span>Open channel</span>
-                    <span className="inline-flex h-9 items-center rounded-full bg-primary/10 px-3 text-primary">Go</span>
+                    <span className="inline-flex h-8 items-center justify-center rounded-full bg-orange-500/10 px-4 text-orange-600 transition-colors group-hover:bg-orange-500/20">Go</span>
                   </div>
                 </Link>
               ) : (
-                <div className="rounded-3xl border border-dashed border-slate-300 bg-muted/20 p-6 text-sm text-muted-foreground">
-                  <p>The CB development channel has not been created yet. Once created, it will appear here.</p>
+                <div className="rounded-[2rem] border border-dashed border-white/20 bg-card/20 backdrop-blur-sm p-8 text-center text-sm font-medium text-muted-foreground">
+                  <Users2 className="mx-auto mb-4 h-10 w-10 text-muted-foreground/30" />
+                  <p>The CB development channel has not been created yet.</p>
                   {isAdmin ? (
-                    <div className="mt-4">
+                    <div className="mt-6">
                       <Link
                         href="/admin/channels"
-                        className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+                        className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-primary-foreground shadow-lg transition hover:bg-primary/90 hover:-translate-y-0.5"
                       >
                         Create CB channel in Admin
                       </Link>
                     </div>
                   ) : (
-                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                      Ask an admin to create the CB development channel so you can open it from here.
+                    <div className="mt-6 inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs backdrop-blur-md">
+                      Ask an admin to create the CB development channel.
                     </div>
                   )}
                 </div>

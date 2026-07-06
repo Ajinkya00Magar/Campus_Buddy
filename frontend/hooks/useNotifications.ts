@@ -11,24 +11,22 @@ export function useNotifications(userId: string | undefined) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        Notification.requestPermission()
+    if (typeof window === 'undefined') return
+    const setup = async () => {
+      if (!('Notification' in window) || !('serviceWorker' in navigator)) return
+      try {
+        await navigator.serviceWorker.register('/sw.js')
+      } catch {
+        return
+      }
+      let permission = Notification.permission
+      if (permission === 'default') permission = await Notification.requestPermission()
+      if (permission === 'granted') {
+        const { subscribeToPush } = await import('@/services/push.service')
+        subscribeToPush()
       }
     }
-
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then(
-        (registration) => {
-          console.log('Service Worker registration successful with scope: ', registration.scope);
-          // Future: Implement PushManager subscription here
-          // registration.pushManager.subscribe({ ... })
-        },
-        (err) => {
-          console.log('Service Worker registration failed: ', err);
-        }
-      );
-    }
+    setup()
   }, [])
 
   useEffect(() => {
