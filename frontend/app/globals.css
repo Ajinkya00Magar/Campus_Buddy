@@ -49,6 +49,59 @@
     --ring:               230 57.0% 55%;
     --sidebar-bg:         220 13% 12%;
   }
+
+  /*
+   * CHARCOAL THEME
+   * Near-black elevation ramp (lighter = higher) + a single high-chroma
+   * electric-violet accent with a restrained glow. Depth is carried by
+   * lightness steps, hairline top-highlights, and soft ambient shadows.
+   */
+  .charcoal {
+    --background:         240 6% 8%;    /* base canvas  ~#131316 */
+    --foreground:         240 9% 90%;   /* off-white body text   */
+    --card:               240 6% 11%;   /* raised surface ~#1B1B1F */
+    --card-foreground:    240 9% 92%;
+    --popover:            240 6% 14%;   /* higher surface ~#222227 */
+    --popover-foreground: 240 9% 94%;
+    --primary:            258 90% 66%;  /* electric violet accent  */
+    --primary-foreground: 240 20% 8%;
+    --secondary:          240 5% 16%;
+    --secondary-foreground: 240 9% 88%;
+    --muted:              240 5% 14%;
+    --muted-foreground:   240 6% 60%;
+    --accent:             258 60% 24%;  /* violet-tinted hover      */
+    --accent-foreground:  240 9% 96%;
+    --destructive:        0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border:             240 6% 20%;
+    --input:              240 6% 22%;
+    --ring:               258 90% 66%;
+    --radius:             0.85rem;
+    --sidebar-bg:         240 7% 6%;
+
+    /* 3D depth tokens (consumed by utilities below) */
+    --glow:              258 90% 66%;
+    --elev-1: 0 1px 2px hsl(240 10% 2% / 0.6), 0 2px 8px hsl(240 10% 2% / 0.45);
+    --elev-2: 0 4px 14px hsl(240 10% 2% / 0.55), 0 10px 30px hsl(240 10% 2% / 0.45);
+    --elev-3: 0 10px 30px hsl(240 10% 2% / 0.6), 0 24px 60px hsl(240 10% 2% / 0.5);
+    --edge-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+  }
+
+  /* Light/Dark fallbacks for the depth tokens so utilities work everywhere */
+  :root {
+    --glow:              230 57% 40%;
+    --elev-1: 0 1px 2px hsl(220 20% 40% / 0.08), 0 2px 8px hsl(220 20% 40% / 0.08);
+    --elev-2: 0 4px 14px hsl(220 20% 40% / 0.12), 0 10px 30px hsl(220 20% 40% / 0.10);
+    --elev-3: 0 10px 30px hsl(220 20% 40% / 0.16), 0 24px 60px hsl(220 20% 40% / 0.12);
+    --edge-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.5);
+  }
+  .dark {
+    --glow:              230 57% 55%;
+    --elev-1: 0 1px 2px hsl(220 20% 2% / 0.5), 0 2px 8px hsl(220 20% 2% / 0.35);
+    --elev-2: 0 4px 14px hsl(220 20% 2% / 0.5), 0 10px 30px hsl(220 20% 2% / 0.4);
+    --elev-3: 0 10px 30px hsl(220 20% 2% / 0.55), 0 24px 60px hsl(220 20% 2% / 0.45);
+    --edge-highlight: inset 0 1px 0 hsl(0 0% 100% / 0.05);
+  }
 }
 
 @layer base {
@@ -137,4 +190,113 @@ a:active,
   scrollbar-gutter: stable;
 }
 
-/* Removed aggressive flattening overrides to allow rounded UI and shadows */
+/* ============================================================
+ * 3D MOTIONAL UI — depth, tilt, glow, and entrance utilities
+ * ============================================================ */
+
+/* Perspective containers for children that tilt/rotate in 3D */
+.perspective      { perspective: 1000px; }
+.perspective-near { perspective: 600px; }
+.preserve-3d      { transform-style: preserve-3d; }
+.backface-hidden  { backface-visibility: hidden; }
+
+/* Elevation (soft ambient shadow + hairline top highlight) */
+.elev-1 { box-shadow: var(--elev-1), var(--edge-highlight); }
+.elev-2 { box-shadow: var(--elev-2), var(--edge-highlight); }
+.elev-3 { box-shadow: var(--elev-3), var(--edge-highlight); }
+
+/* Accent glow — for hero / interactive emphasis */
+.glow      { box-shadow: 0 0 0 1px hsl(var(--glow) / 0.4), 0 0 24px hsl(var(--glow) / 0.35); }
+.glow-soft { box-shadow: 0 0 18px hsl(var(--glow) / 0.22); }
+.text-glow { text-shadow: 0 0 18px hsl(var(--glow) / 0.55); }
+
+/* Hover lift — a small 3D pop on any interactive surface */
+.lift {
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+}
+.lift:hover {
+  transform: translateY(-4px) scale(1.012);
+  box-shadow: var(--elev-3), var(--edge-highlight);
+}
+
+/* Card that tilts toward the cursor (driven by --rx / --ry set in JS) */
+.tilt-3d {
+  transform: perspective(900px)
+             rotateX(var(--rx, 0deg))
+             rotateY(var(--ry, 0deg))
+             translateZ(0);
+  transition: transform 120ms ease-out, box-shadow 220ms ease-out;
+  transform-style: preserve-3d;
+}
+
+/* Sheen that sweeps across a surface on hover */
+.sheen { position: relative; overflow: hidden; }
+.sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, hsl(0 0% 100% / 0.10) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 650ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+}
+.sheen:hover::after { transform: translateX(120%); }
+
+/* Grid-paper texture used by the crumple transition */
+.grid-paper {
+  background-color: hsl(var(--muted));
+  background-image:
+    linear-gradient(hsl(var(--border) / 0.9) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.9) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* ---- Entrance / motion keyframes (used by utilities + Framer fallbacks) ---- */
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.9) translateY(10px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes dropDown {
+  from { opacity: 0; transform: translateY(-14px) scaleY(0.96); }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 18px hsl(var(--glow) / 0.25); }
+  50%      { box-shadow: 0 0 30px hsl(var(--glow) / 0.5); }
+}
+
+.animate-pop      { animation: popIn 320ms cubic-bezier(0.2, 0.9, 0.2, 1.15) both; }
+.animate-drop     { animation: dropDown 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.animate-floaty   { animation: floaty 4.5s ease-in-out infinite; }
+.animate-glow     { animation: glowPulse 3s ease-in-out infinite; }
+
+/* ============================================================
+ * MOBILE — safe-area insets (needs viewport-fit=cover, set in layout)
+ * Used on the chat composer, sidebar, and navbar so controls clear the
+ * notch / home-indicator / gesture bar on iOS & Android.
+ * ============================================================ */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.pl-safe { padding-left: env(safe-area-inset-left, 0px); }
+.pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+/* Add the safe-area amount on top of an existing padding value */
+.pb-safe-plus { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px)); }
+
+/* ============================================================
+ * ACCESSIBILITY — honour the OS "reduce motion" setting.
+ * (Framer Motion reads this too via useReducedMotion.)
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
-import { Hash, Plus, Trash2, ArrowLeft, Users, X, Search, Loader2, Lock, Unlock } from 'lucide-react'
+import { Hash, Plus, Trash2, ArrowLeft, Users, X, Search, Loader2, Lock, Unlock, Megaphone } from 'lucide-react'
 import Link from 'next/link'
 import { useChannels } from '@/hooks/useChannels'
 import type { Channel, User } from '@/types'
@@ -27,17 +27,18 @@ export default function AdminChannelsPage() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<User | null>(null)
   
-  // Realtime state management via hook
+  // Realtime state management via context
   const channels = useChannels(initialChannels, profile)
 
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({ 
-    name: '', 
-    description: '', 
-    type: 'academic', 
-    department: '', 
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    type: 'academic',
+    department: '',
     year: 'none',
-    is_private: false 
+    is_private: false,
+    post_policy: 'everyone' as 'everyone' | 'staff'
   })
   const [userId, setUserId] = useState('')
   const [managingChannel, setManagingChannel] = useState<Channel | null>(null)
@@ -73,6 +74,7 @@ export default function AdminChannelsPage() {
       department: form.department || undefined,
       year: (form.year && form.year !== 'none') ? parseInt(form.year) : undefined,
       is_private: form.is_private,
+      post_policy: form.post_policy,
       created_by: userId,
     })
     
@@ -83,7 +85,7 @@ export default function AdminChannelsPage() {
     }
 
     // No need to manually refresh state, useChannels hook will catch the INSERT event
-    setForm({ name: '', description: '', type: 'academic', department: '', year: 'none', is_private: false })
+    setForm({ name: '', description: '', type: 'academic', department: '', year: 'none', is_private: false, post_policy: 'everyone' })
     setCreating(false)
     toast({ title: 'Channel created successfully!' })
   }
@@ -168,18 +170,30 @@ export default function AdminChannelsPage() {
             </div>
           </div>
           
-          <div className="flex items-center justify-between border-t border-border pt-4">
-            <div className="flex items-center gap-2">
-              <Switch checked={form.is_private} onCheckedChange={v => set('is_private', v)} />
-              <div className="flex flex-col">
-                <Label className="flex items-center gap-1.5 cursor-pointer text-foreground" onClick={() => set('is_private', !form.is_private)}>
-                  {form.is_private ? <Lock className="h-3 w-3 text-amber-500" /> : <Unlock className="h-3 w-3 text-emerald-500" />}
-                  Private Channel
-                </Label>
-                <span className="text-[10px] text-muted-foreground font-medium">Only members can view messages in private channels.</span>
+          <div className="flex flex-col gap-4 border-t border-border pt-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <Switch checked={form.is_private} onCheckedChange={v => set('is_private', v)} />
+                <div className="flex flex-col">
+                  <Label className="flex items-center gap-1.5 cursor-pointer text-foreground" onClick={() => set('is_private', !form.is_private)}>
+                    {form.is_private ? <Lock className="h-3 w-3 text-amber-500" /> : <Unlock className="h-3 w-3 text-emerald-500" />}
+                    Private Channel
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground font-medium">Only members can view messages in private channels.</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={form.post_policy === 'staff'} onCheckedChange={v => set('post_policy', v ? 'staff' : 'everyone')} />
+                <div className="flex flex-col">
+                  <Label className="flex items-center gap-1.5 cursor-pointer text-foreground" onClick={() => set('post_policy', form.post_policy === 'staff' ? 'everyone' : 'staff')}>
+                    <Megaphone className="h-3 w-3 text-primary" />
+                    Announcement only
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground font-medium">Only admins and faculty can post; everyone can read.</span>
+                </div>
               </div>
             </div>
-            <Button onClick={handleCreate} disabled={creating} className="bg-primary text-primary-foreground hover:opacity-90 px-6">
+            <Button onClick={handleCreate} disabled={creating} className="bg-primary text-primary-foreground hover:opacity-90 px-6 shrink-0">
               {creating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               Create Channel
             </Button>

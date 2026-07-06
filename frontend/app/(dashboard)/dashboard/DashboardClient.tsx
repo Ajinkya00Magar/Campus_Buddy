@@ -1,17 +1,42 @@
 'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { 
-  Calendar, Users2, BookOpen, Hash, TrendingUp, ArrowRight, Clock, 
-  Trophy, MessageSquare, Star, Sparkles, LayoutGrid, Bell
+  Calendar, Users2, BookOpen, Hash, Clock, 
+  MessageSquare, Zap, Compass, PlayCircle, MapPin, Sparkles, MoveRight, TrendingUp
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { useChannels } from '@/hooks/useChannels'
 import { useEvents } from '@/hooks/useEvents'
 import { useCourses } from '@/hooks/useCourses'
-import { getProfileDepartmentDisplay, STUDENT_DEPARTMENT_SHORT } from '@/utils/department'
+import { useChannels } from '@/hooks/useChannels'
+import { getProfileDepartmentDisplay } from '@/utils/department'
+import { m } from 'framer-motion'
 import type { User, Channel, Event, Course } from '@/types'
+import { ReactNode } from 'react'
+import { SpatialCard } from '@/components/ui/spatial-card'
+
+
+function ActionButton({ icon: Icon, label, desc, href, delay }: any) {
+  return (
+    <m.div
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, delay, type: 'spring' }}
+    >
+      <Link href={href} className="relative flex items-center p-4 sm:p-5 rounded-[2rem] bg-card/40 backdrop-blur-xl border border-white/10 shadow-lg hover:shadow-2xl hover:-translate-y-1 hover:bg-background/80 transition-all group overflow-hidden h-full">
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-50" />
+        <div className="h-12 w-12 shrink-0 rounded-full bg-primary/10 text-primary flex items-center justify-center mr-4 group-hover:bg-primary group-hover:text-white group-hover:scale-110 transition-all duration-500">
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black text-foreground truncate">{label}</p>
+          <p className="text-[10px] uppercase font-bold text-muted-foreground mt-0.5 truncate">{desc}</p>
+        </div>
+        <MoveRight className="h-4 w-4 text-muted-foreground opacity-0 -translate-x-4 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 shrink-0" />
+      </Link>
+    </m.div>
+  )
+}
 
 export default function DashboardClient({
   profile,
@@ -28,179 +53,213 @@ export default function DashboardClient({
   completedIds: Set<string>
   counts: { events: number, clubs: number, courses: number }
 }) {
-  // Use our realtime hooks
-  const allChannels = useChannels(initialChannels, profile)
   const events = useEvents(initialEvents)
   const courses = useCourses(initialCourses)
-
-  // Filter channels using the same logic as the sidebar
-  const yourChannels = allChannels.slice(0, 4) // Hooks already handle basic filtering
-
-  const stats = [
-    { label: 'Events', value: counts.events, icon: Calendar, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/20' },
-    { label: 'Clubs', value: counts.clubs, icon: Users2, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-900/20' },
-    { label: 'Courses', value: counts.courses, icon: BookOpen, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-    { label: 'Channels', value: allChannels.length, icon: Hash, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/20' },
-  ]
-
-  const upcomingEvents = events.filter(e => new Date(e.event_date) >= new Date()).slice(0, 3)
+  const allChannels = useChannels(initialChannels, profile)
+  
+  // Intelligence context
+  const yourChannels = allChannels.slice(0, 3)
+  const upcomingEvents = events.filter(e => new Date(e.event_date) >= new Date())
+  const nextEvent = upcomingEvents[0]
+  
+  // Find a course to resume (one that is NOT completed)
+  const resumeCourse = courses.find(c => !completedIds.has(c.id))
+  
   const departmentLabel = getProfileDepartmentDisplay(profile)
 
+  const formatTime = (date: string) => {
+    return new Date(date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+  }
+
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12 animate-fade-in">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 rounded-2xl border bg-card p-6 shadow-sm relative overflow-hidden">
-        <div className="absolute right-0 top-0 h-full w-32 bg-primary/5 -skew-x-12 translate-x-10" />
-        <div className="relative">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
-            Hello, {profile?.name?.split(' ')[0]}! <span className="animate-bounce">👋</span>
-          </h1>
-          <p className="text-sm text-muted-foreground font-medium mt-1">
-            Welcome to your MITAOE campus dashboard{departmentLabel ? ` · ${departmentLabel}` : ''}.
-          </p>
-        </div>
-        <div className="relative flex flex-wrap gap-3">
-          {departmentLabel && (
-            <div className="rounded-xl bg-muted/50 px-4 py-2 border border-border min-w-[7.5rem]">
-              <p className="text-[10px] font-bold uppercase text-muted-foreground/80 tracking-wider">Department</p>
-              <p className="text-sm font-bold text-foreground leading-tight">{STUDENT_DEPARTMENT_SHORT}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{departmentLabel}</p>
-            </div>
-          )}
-          <div className="rounded-xl bg-muted/50 px-4 py-2 border border-border">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground/80 tracking-wider">Year</p>
-            <p className="text-base font-black text-foreground">{profile?.year ?? '—'}</p>
-          </div>
-          <div className="rounded-xl bg-muted/50 px-4 py-2 border border-border">
-            <p className="text-[10px] font-bold uppercase text-muted-foreground/80 tracking-wider">PRN</p>
-            <p className="text-base font-mono font-bold text-foreground">{profile?.email?.split('@')[0]}</p>
-          </div>
-        </div>
-      </div>
+    <div className="relative min-h-[calc(100vh-4rem)] pb-12 pt-4 px-2 sm:px-4">
 
-      {/* ── Stats ── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => (
-          <div key={s.label} className="flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:shadow-md hover:border-primary/20">
-            <div className={cn("flex h-12 w-12 items-center justify-center rounded-xl shrink-0 shadow-sm", s.bg)}>
-              <s.icon className={cn("h-6 w-6", s.color)} />
+      <div className="max-w-7xl mx-auto z-10 relative">
+        {/* 1. Dynamic Island Header */}
+        <m.div 
+          initial={{ opacity: 0, y: -40, width: '120px' }}
+          animate={{ opacity: 1, y: 0, width: '100%' }}
+          transition={{ 
+            duration: 1.2, 
+            type: 'spring', 
+            bounce: 0.4,
+            delay: 0.1
+          }}
+          className="mx-auto flex items-center justify-between gap-4 rounded-full bg-background/60 backdrop-blur-3xl border border-border/50 p-3 shadow-2xl mb-12 relative overflow-hidden origin-top"
+        >
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+          
+          <m.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
+            className="flex items-center gap-4 min-w-0"
+          >
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-primary text-primary-foreground shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center justify-center shrink-0">
+              <Zap className="h-5 w-5 fill-current" />
             </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide leading-none">{s.label}</p>
-              <p className="text-2xl font-black text-foreground mt-1.5">{s.value}</p>
+            <div className="flex flex-col min-w-0 overflow-hidden whitespace-nowrap">
+              <span className="text-sm sm:text-base font-black text-foreground leading-tight truncate">Welcome back, {profile?.name?.split(' ')[0]}</span>
+              <span className="text-[9px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold truncate">
+                {departmentLabel} • Year {profile?.year ?? '—'}
+              </span>
             </div>
-          </div>
-        ))}
-      </div>
+          </m.div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <div className="space-y-6 lg:col-span-8">
-          {/* Your Channels */}
-          <section className="space-y-3 rounded-3xl border border-sky-100 bg-sky-50/60 p-5 shadow-sm transition-colors">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-base font-bold text-sky-800 uppercase tracking-widest flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-sky-500" /> Active Channels
-              </h2>
-              <Link href="/channels" className="text-xs font-bold text-sky-700 hover:underline uppercase tracking-tight">Browse all</Link>
+          <m.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5, duration: 0.5, type: 'spring' }}
+            className="hidden sm:flex items-center gap-3 pr-4 shrink-0 whitespace-nowrap"
+          >
+             <div className="flex items-center gap-2 rounded-full bg-background/50 border border-border/50 px-4 py-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-foreground">System Online</span>
+             </div>
+          </m.div>
+        </m.div>
+
+        {/* The Dashboard Command Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-8">
+          
+          {/* UP NEXT (Center Stage) - Spans 8 cols */}
+          <SpatialCard delay={0.1} className="lg:col-span-8 bg-gradient-to-br from-blue-500/10 to-purple-500/10 dark:from-blue-500/20 dark:to-purple-500/20 border-blue-200/40 dark:border-blue-500/30">
+            <div className="absolute -right-20 -top-20 w-64 h-64 bg-blue-400/20 rounded-full blur-[80px] opacity-60 pointer-events-none" />
+            
+            <div className="flex items-center justify-between mb-10 z-10">
+              <div className="flex items-center gap-3 rounded-full bg-background/60 backdrop-blur-xl px-4 py-2 border border-border/50 shadow-sm">
+                <Sparkles className="h-4 w-4 text-purple-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground">Priority Action</span>
+              </div>
+              <span className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">{upcomingEvents.length} Pending</span>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {yourChannels.length === 0 ? (
-                <div className="col-span-2 rounded-2xl border border-dashed p-8 text-center bg-muted/10">
-                  <p className="text-sm font-medium text-muted-foreground">No active channels found for your academic year.</p>
+
+            {nextEvent ? (
+              <div className="flex-1 flex flex-col lg:flex-row gap-8 items-start lg:items-end justify-between z-10 mt-auto">
+                <div className="max-w-xl">
+                  <p className="text-[10px] uppercase font-bold text-primary mb-3 tracking-widest">Next Event</p>
+                  <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-foreground leading-[1.1] mb-6">
+                    {nextEvent.title}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm font-bold text-muted-foreground">
+                    <span className="flex items-center gap-2 rounded-lg bg-background/50 px-3 py-1.5"><Clock className="h-4 w-4" /> {formatTime(nextEvent.event_date)}</span>
+                    <span className="flex items-center gap-2 rounded-lg bg-background/50 px-3 py-1.5"><MapPin className="h-4 w-4" /> {nextEvent.location ?? 'Campus'}</span>
+                  </div>
                 </div>
-              ) : yourChannels.map((ch: any) => (
-                <Link key={ch.id} href={`/channels/${ch.id}`}>
-                  <div className="group flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:bg-muted/50 hover:border-primary/20 hover:shadow-sm">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                      <Hash className="h-6 w-6" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold text-sm truncate text-foreground group-hover:text-primary transition-colors">#{ch.name}</p>
-                      <p className="text-[11px] text-muted-foreground truncate uppercase font-bold opacity-70 tracking-tighter mt-0.5">{ch.type}</p>
-                    </div>
-                  </div>
+                <Link href={`/events/${nextEvent.id}`} className="shrink-0 group/btn relative overflow-hidden rounded-full bg-primary text-primary-foreground px-8 py-4 font-black uppercase tracking-wider text-[11px] shadow-[0_0_40px_rgba(var(--primary),0.3)] transition-transform duration-500 hover:scale-105 hover:shadow-[0_0_60px_rgba(var(--primary),0.5)] flex items-center gap-3">
+                   <PlayCircle className="h-5 w-5" />
+                   Join Event
+                   <div className="absolute inset-0 bg-white/20 translate-y-full transition-transform duration-500 group-hover/btn:translate-y-0" />
                 </Link>
-              ))}
-            </div>
-          </section>
+              </div>
+            ) : (
+              <div className="flex-1 flex flex-col justify-center items-center py-10 opacity-50 z-10">
+                 <Calendar className="h-12 w-12 mb-4" />
+                 <p className="text-lg font-bold">Your schedule is perfectly clear!</p>
+              </div>
+            )}
+          </SpatialCard>
 
-          {/* Upcoming Events */}
-          <section className="space-y-3 rounded-3xl border border-amber-100 bg-amber-50/60 p-5 shadow-sm transition-colors">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-base font-bold text-amber-800 uppercase tracking-widest flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-amber-500" /> Campus Schedule
+          {/* QUICK ACTIONS ROW (4 cols) */}
+          <div className="lg:col-span-4 flex flex-col gap-4 sm:gap-6">
+            <ActionButton 
+              icon={BookOpen} 
+              label={resumeCourse ? "Resume Course" : "Browse Courses"} 
+              desc={resumeCourse ? resumeCourse.title : "Start learning"} 
+              href={resumeCourse ? `/courses/${resumeCourse.id}` : "/courses"} 
+              delay={0.2} 
+            />
+            <ActionButton 
+              icon={Compass} 
+              label="Explore Campus" 
+              desc="View map and locations" 
+              href="/campus" 
+              delay={0.25} 
+            />
+            <ActionButton 
+              icon={Users2} 
+              label="Join a Club" 
+              desc="Discover communities" 
+              href="/clubs" 
+              delay={0.3} 
+            />
+          </div>
+
+          {/* ACTIVE CHANNELS (Spans 6 cols) */}
+          <SpatialCard delay={0.4} className="lg:col-span-6 flex flex-col min-h-[380px]">
+            <div className="flex items-center justify-between mb-8 shrink-0">
+              <h2 className="text-xs font-black uppercase tracking-widest flex items-center gap-3 text-foreground/80">
+                 <div className="h-8 w-8 rounded-full bg-sky-500/10 flex items-center justify-center">
+                   <MessageSquare className="h-4 w-4 text-sky-500" /> 
+                 </div>
+                 Recent Chat Activity
               </h2>
             </div>
-            <div className="grid gap-3">
-              {upcomingEvents.length === 0 ? (
-                <div className="rounded-2xl border p-8 text-center bg-muted/5">
-                   <p className="text-sm text-muted-foreground">No upcoming events scheduled at the moment.</p>
-                </div>
-              ) : upcomingEvents.map((event: any) => (
-                <Link key={event.id} href={`/events/${event.id}`}>
-                  <div className="group flex items-center gap-5 rounded-2xl border bg-card p-4 transition-all hover:bg-muted/50 hover:shadow-sm">
-                    <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/10">
-                      <span className="text-lg leading-none">{new Date(event.event_date).getDate()}</span>
-                      <span className="text-[10px] uppercase tracking-tighter mt-0.5">{new Date(event.event_date).toLocaleString('default', { month: 'short' })}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-base font-bold text-foreground truncate group-hover:text-primary transition-colors">{event.title}</h3>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground font-semibold">
-                        <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {new Date(event.event_date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
-                        <span>·</span>
-                        <span className="truncate">{event.location ?? 'Campus'}</span>
-                      </div>
-                    </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all translate-x-[-4px] group-hover:translate-x-0" />
+            <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-y-auto custom-scrollbar pr-2">
+               {yourChannels.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center border border-dashed border-border/50 rounded-3xl">
+                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">No recent messages</p>
                   </div>
-                </Link>
-              ))}
+               ) : (
+                  yourChannels.map((ch: any) => (
+                    <Link key={ch.id} href={`/channels/${ch.id}`} className="group/ch flex items-center gap-4 p-4 rounded-[1.5rem] bg-background/40 hover:bg-background/80 border border-transparent hover:border-border/50 transition-all shrink-0">
+                       <div className="h-10 w-10 shrink-0 rounded-full bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 flex items-center justify-center group-hover/ch:bg-sky-500 group-hover/ch:text-white transition-colors duration-500">
+                         <Hash className="h-4 w-4" />
+                       </div>
+                       <div className="min-w-0 flex-1">
+                         <div className="flex items-center justify-between">
+                           <p className="font-black text-sm truncate text-foreground">{ch.name}</p>
+                           <span className="h-2 w-2 rounded-full bg-sky-500 shrink-0" />
+                         </div>
+                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 opacity-70 truncate">{ch.type} • Tap to view</p>
+                       </div>
+                    </Link>
+                  ))
+               )}
             </div>
-          </section>
-        </div>
+          </SpatialCard>
 
-        {/* Sidebar Column */}
-        <div className="space-y-6 lg:col-span-4">
-          <Card className="rounded-2xl border bg-emerald-500/5 dark:bg-emerald-500/10 shadow-none border-emerald-500/10 overflow-hidden">
-            <div className="bg-emerald-500/10 px-4 py-3 border-b border-emerald-500/10">
-              <h3 className="text-xs font-black uppercase tracking-[0.25rem] text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                < BookOpen className="h-4 w-4" /> Academics
-              </h3>
+          {/* QUICK GLANCE STATS (Spans 6 cols) */}
+          <SpatialCard delay={0.5} className="lg:col-span-6 flex flex-col min-h-[380px] bg-gradient-to-tr from-emerald-500/5 to-transparent">
+            <div className="flex items-center justify-between mb-8 shrink-0">
+              <h2 className="text-xs font-black uppercase tracking-widest flex items-center gap-3 text-foreground/80">
+                 <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                   <TrendingUp className="h-4 w-4 text-emerald-500" />
+                 </div>
+                 Your Progress
+              </h2>
             </div>
-            <CardContent className="space-y-2 px-3 py-3">
-              {courses.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4 italic">Discover and start new courses</p>
-              ) : courses.map((course: any) => (
-                <Link key={course.id} href={`/courses/${course.id}`}>
-                  <div className="group flex items-center gap-3 rounded-xl bg-background/50 p-2.5 border border-transparent hover:border-emerald-500/20 transition-all hover:shadow-sm">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30">
-                      <BookOpen className="h-4 w-4" />
+            <div className="flex-1 grid grid-cols-2 gap-4">
+               <div className="flex flex-col justify-center p-6 rounded-[2rem] bg-background/50 border border-border/50 hover:scale-[1.02] transition-transform">
+                 <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-2">Completed</p>
+                 <p className="text-4xl font-black text-emerald-500">{completedIds.size}</p>
+                 <p className="text-xs font-bold text-foreground mt-2">Courses</p>
+               </div>
+               <div className="flex flex-col justify-center p-6 rounded-[2rem] bg-background/50 border border-border/50 hover:scale-[1.02] transition-transform">
+                 <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-2">Engaged In</p>
+                 <p className="text-4xl font-black text-purple-500">{counts.clubs}</p>
+                 <p className="text-xs font-bold text-foreground mt-2">Clubs</p>
+               </div>
+               <div className="col-span-2 flex flex-col justify-center p-6 rounded-[2rem] bg-background/50 border border-border/50 hover:scale-[1.02] transition-transform">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-2">Campus</p>
+                      <p className="text-2xl font-black text-amber-500">{counts.events}</p>
+                      <p className="text-xs font-bold text-foreground mt-1">Upcoming Events</p>
                     </div>
-                    <p className="font-bold text-xs truncate text-foreground flex-1 group-hover:text-emerald-600 transition-colors">{course.title}</p>
-                    {completedIds.has(course.id) && <Trophy className="h-3.5 w-3.5 text-emerald-500" />}
+                    <div className="h-16 w-16 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
+                      <Calendar className="h-6 w-6" />
+                    </div>
                   </div>
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
+               </div>
+            </div>
+          </SpatialCard>
 
-          <div className="grid grid-cols-2 gap-3">
-             <QuickNav label="Profile" icon={Users2} href="/settings" bg="bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100" />
-             <QuickNav label="Notifs" icon={Bell} href="/notifications" bg="bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100" />
-             <QuickNav label="Map" icon={LayoutGrid} href="/channels" bg="bg-sky-50 border-sky-100 text-sky-700 hover:bg-sky-100" />
-             <QuickNav label="Help" icon={Star} href="/settings" bg="bg-violet-50 border-violet-100 text-violet-700 hover:bg-violet-100" />
-          </div>
         </div>
       </div>
     </div>
-  )
-}
-
-function QuickNav({ label, icon: Icon, href, bg }: { label: string, icon: any, href: string, bg: string }) {
-  return (
-    <Link href={href} className={cn(`flex flex-col items-center justify-center gap-2 rounded-2xl border p-5 transition-all hover:shadow-md hover:-translate-y-0.5 group ${bg}`)}>
-      <Icon className="h-5 w-5 transition-all duration-300" />
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-    </Link>
   )
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/contexts/SidebarContext'
+import { useChannels } from '@/hooks/useChannels'
 import { useUnreadBadges } from '@/hooks/useUnreadBadges'
 import { cn } from '@/lib/utils'
 import { isYearNoticeChannel, shouldShowChannelInSidebar, YEAR_LABELS, YEAR_VALUES } from '@/utils/channelVisibility'
@@ -27,9 +28,10 @@ const navItems = [
 const adminItems = [{ href: '/admin', label: 'Admin Panel', icon: Shield }]
 const courseManagerItems = [{ href: '/admin/courses', label: 'Manage Courses', icon: BookOpen }]
 
-export default function Sidebar({ role, channels = [], userId }: { role: UserRole, channels?: Channel[], userId?: string }) {
+export default function Sidebar({ role, channels: initialChannels = [], userId }: { role: UserRole, channels?: Channel[], userId?: string }) {
   const pathname = usePathname()
   const { isOpen, toggle, close } = useSidebar()
+  const channels = useChannels(initialChannels, null)
   const { unreadCounts, mutedChannels } = useUnreadBadges(userId, channels)
   const items = role === 'admin'
     ? [...navItems, ...adminItems]
@@ -42,7 +44,7 @@ export default function Sidebar({ role, channels = [], userId }: { role: UserRol
       {/* ── Desktop: in-flow, width animates ── */}
       <aside
         style={{ width: isOpen ? '232px' : '60px' }}
-        className="relative z-20 hidden h-full shrink-0 flex-col overflow-hidden border-r border-border bg-slate-100 transition-[width] duration-150 ease-in-out dark:border-slate-800 dark:bg-slate-950 md:flex"
+        className="relative z-20 hidden h-full shrink-0 flex-col overflow-hidden border-r border-border bg-slate-100 transition-[width] duration-150 ease-in-out will-change-[width] dark:border-slate-800 dark:bg-slate-950 md:flex"
       >
         <SidebarInner items={items} pathname={pathname} isOpen={isOpen} toggle={toggle} onNavClick={() => {}} channels={channels} unreadCounts={unreadCounts} mutedChannels={mutedChannels} />
       </aside>
@@ -157,17 +159,20 @@ function SidebarInner({
                     if (!external) onNavClick()
                   }}
                   className={cn(
-                    'interactive-control flex items-center text-sm font-medium transition-colors',
-                    isOpen ? 'gap-3 px-2.5 py-2' : 'justify-center py-2',
+                    'interactive-control group/nav relative flex items-center rounded-lg text-sm font-medium transition-all duration-200 ease-smooth',
+                    isOpen ? 'gap-3 px-2.5 py-2 hover:translate-x-1' : 'justify-center py-2 hover:scale-110',
                     isActive
-                      ? 'bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100'
+                      ? 'bg-slate-200 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100'
                       : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
                   )}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary transition-all" />
+                  )}
+                  <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200 group-hover/nav:scale-110', isActive && 'text-primary')} />
                   {isOpen && <span className="leading-none truncate flex-1">{label}</span>}
                   {isActive && isOpen && !isChannelParent && (
-                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-slate-500 dark:bg-slate-300 shrink-0" />
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shrink-0 animate-glow" />
                   )}
                   {isChannelParent && isOpen && (
                     <ChevronDown className={cn("h-3 w-3 opacity-40 transition-transform", channelsExpanded ? "rotate-0" : "-rotate-90")} />
@@ -249,9 +254,9 @@ function SidebarChannelLink({ channel, pathname, onNavClick, unreadCount = 0, is
       href={`/channels/${channel.id}`}
       onClick={onNavClick}
       className={cn(
-        "flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium transition-colors justify-between",
-        isActive 
-          ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100" 
+        "flex items-center gap-2 rounded-md px-2 py-1 text-xs font-medium transition-all duration-200 ease-smooth justify-between hover:translate-x-1",
+        isActive
+          ? "bg-slate-200 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
           : "text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
       )}
     >

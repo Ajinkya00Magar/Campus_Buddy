@@ -70,11 +70,40 @@ const config: Config = {
           from: { opacity: '0', transform: 'translateY(8px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        'pop-in': {
+          from: { opacity: '0', transform: 'scale(0.9) translateY(10px)' },
+          to: { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
+        'drop-down': {
+          from: { opacity: '0', transform: 'translateY(-14px) scaleY(0.96)' },
+          to: { opacity: '1', transform: 'translateY(0) scaleY(1)' },
+        },
+        'slide-up': {
+          from: { opacity: '0', transform: 'translateY(24px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        floaty: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in': 'fade-in 0.3s ease-out',
+        'pop-in': 'pop-in 0.32s cubic-bezier(0.2, 0.9, 0.2, 1.15) both',
+        'drop-down': 'drop-down 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        'slide-up': 'slide-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both',
+        floaty: 'floaty 4.5s ease-in-out infinite',
+      },
+      boxShadow: {
+        'elev-1': 'var(--elev-1), var(--edge-highlight)',
+        'elev-2': 'var(--elev-2), var(--edge-highlight)',
+        'elev-3': 'var(--elev-3), var(--edge-highlight)',
+      },
+      transitionTimingFunction: {
+        smooth: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+        pop: 'cubic-bezier(0.2, 0.9, 0.2, 1.15)',
       },
     },
   },

@@ -1,12 +1,13 @@
 'use client'
-
 import { ThemeProvider } from './ThemeContext'
 import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'
+
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
 import { usePathname } from 'next/navigation'
-import { useChannels } from '@/hooks/useChannels'
 import { cn } from '../../../backend/lib/utils'
+import MotionProvider from '@/components/motion/MotionProvider'
+import PageTransition from '@/components/motion/PageTransition'
 import type { User, Channel } from '@/types'
 
 function Shell({ user, channels: initialChannels, children }: { user: User | null; channels: Channel[]; children: React.ReactNode }) {
@@ -17,11 +18,8 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
   const isCourseDetailPage = pathname.startsWith('/courses/')
   const isFullBleedPage = isChannelPage || isEmbeddedResourcePage || isCourseDetailPage
   
-  // Realtime channels for the sidebar
-  const channels = useChannels(initialChannels, user)
-
   return (
-    <div className="relative flex h-screen overflow-hidden bg-background">
+    <div className="relative flex h-[100dvh] overflow-hidden bg-background">
       {isOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/45 md:hidden"
@@ -29,7 +27,8 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
         />
       )}
 
-      <Sidebar role={user?.role ?? 'student'} channels={channels} userId={user?.id} />
+
+      <Sidebar role={user?.role ?? 'student'} channels={initialChannels} userId={user?.id} />
 
       <div className="relative z-10 flex min-w-0 flex-1 flex-col overflow-hidden">
         <Navbar user={user} />
@@ -37,7 +36,7 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
           "flex-1 overflow-hidden",
           isFullBleedPage ? "p-0" : "overflow-y-auto p-3 md:p-4"
         )}>
-          {children}
+          <PageTransition>{children}</PageTransition>
         </main>
       </div>
     </div>
@@ -55,9 +54,11 @@ export default function DashboardShell({
 }) {
   return (
     <ThemeProvider>
-      <SidebarProvider>
-        <Shell user={user} channels={channels}>{children}</Shell>
-      </SidebarProvider>
+      <MotionProvider>
+        <SidebarProvider>
+          <Shell user={user} channels={channels}>{children}</Shell>
+        </SidebarProvider>
+      </MotionProvider>
     </ThemeProvider>
   )
 }

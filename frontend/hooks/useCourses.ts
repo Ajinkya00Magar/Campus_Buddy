@@ -10,7 +10,7 @@ export function useCourses(initialCourses: Course[]) {
 
   useEffect(() => {
     setCourses(initialCourses)
-  }, [initialCourses])
+  }, [initialCourses.map(c => c.id).join(',')])
 
   useEffect(() => {
     const channel = supabase

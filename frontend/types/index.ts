@@ -109,6 +109,8 @@ export interface CourseLearningStatus {
   updated_at?: string
 }
 
+export type ChannelPostPolicy = 'everyone' | 'staff'
+
 export interface Channel {
   id: string
   name: string
@@ -117,6 +119,7 @@ export interface Channel {
   department?: string
   year?: number
   is_private: boolean
+  post_policy?: ChannelPostPolicy
   created_by?: string
   created_at: string
 }

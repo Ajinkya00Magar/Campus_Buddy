@@ -6,12 +6,13 @@ import { useSidebar } from '@/contexts/SidebarContext'
 import { useTheme } from './ThemeContext'
 import { getInitials, getRoleBadgeColor, cn } from '@/lib/utils'
 import NotificationDropdown from './NotificationDropdown'
+import GlobalSearch from './GlobalSearch'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings, Menu, Sun, Moon } from 'lucide-react'
+import { LogOut, User, Settings, Menu, Sun, Moon, Palette } from 'lucide-react'
 import { getProfileDepartmentDisplay, STUDENT_DEPARTMENT_SHORT } from '@/utils/department'
 import type { User as UserType } from '@/types'
 
@@ -50,16 +51,19 @@ export default function Navbar({ user }: { user: UserType | null }) {
 
       <div className="flex-1" />
 
-      {/* Dark mode toggle */}
+      {/* Global search (⌘K) */}
+      <GlobalSearch />
+
+      {/* Theme toggle — cycles light → dark → charcoal */}
       <button
         onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        className="interactive-control flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:bg-accent hover:text-foreground"
+        aria-label={`Theme: ${theme}. Click to switch.`}
+        title={`Theme: ${theme}`}
+        className="interactive-control lift flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:bg-accent hover:text-foreground"
       >
-        {theme === 'dark'
-          ? <Sun  className="h-4.5 w-4.5" />
-          : <Moon className="h-4.5 w-4.5" />
-        }
+        {theme === 'light'    && <Sun     className="h-4.5 w-4.5" />}
+        {theme === 'dark'     && <Moon    className="h-4.5 w-4.5" />}
+        {theme === 'charcoal' && <Palette className="h-4.5 w-4.5 text-primary" />}
       </button>
 
       {/* Notifications */}
@@ -68,7 +72,7 @@ export default function Navbar({ user }: { user: UserType | null }) {
       {/* User dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="interactive-control flex items-center gap-2 border border-transparent px-2 py-1 outline-none transition hover:border-border hover:bg-accent">
+          <button className="interactive-control lift flex items-center gap-2 rounded-lg border border-transparent px-2 py-1 outline-none transition hover:border-border hover:bg-accent">
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.avatar_url} />
               <AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">

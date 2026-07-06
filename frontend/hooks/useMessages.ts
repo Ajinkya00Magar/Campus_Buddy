@@ -2,26 +2,56 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { getMessages } from '@/services/channels.service'
+import { getMessages, MESSAGE_PAGE_SIZE } from '@/services/channels.service'
 import type { Message } from '@/types'
 
 export function useMessages(channelId: string) {
   const supabase = createClient()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  // Guards against overlapping loadOlder calls and stale channel loads.
+  const loadingOlderRef = useRef(false)
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior }), 50)
   }, [])
 
+  // Load the page immediately older than the current oldest message.
+  const loadOlder = useCallback(async () => {
+    if (loadingOlderRef.current || !hasMore) return null
+    const oldest = messages[0]
+    if (!oldest) return null
+
+    loadingOlderRef.current = true
+    setLoadingOlder(true)
+    const older = await getMessages(channelId, { before: oldest.created_at })
+    setHasMore(older.length === MESSAGE_PAGE_SIZE)
+    if (older.length > 0) {
+      setMessages((prev) => {
+        const seen = new Set(prev.map((m) => m.id))
+        const merged = older.filter((m) => !seen.has(m.id))
+        return [...merged, ...prev]
+      })
+    }
+    setLoadingOlder(false)
+    loadingOlderRef.current = false
+    return older.length
+  }, [channelId, hasMore, messages])
+
   useEffect(() => {
     if (!channelId) return
+    let active = true
     setLoading(true)
     setMessages([])
+    setHasMore(false)
 
     getMessages(channelId).then((msgs) => {
+      if (!active) return
       setMessages(msgs)
+      setHasMore(msgs.length === MESSAGE_PAGE_SIZE)
       setLoading(false)
       scrollToBottom('instant')
     })
@@ -73,7 +103,7 @@ export function useMessages(channelId: string) {
           event: 'DELETE',
           schema: 'public',
           table: 'messages',
-          // Removed filter: `channel_id=eq.${channelId}` to ensure event delivery
+          // No channel_id filter: DELETE payloads only carry the old PK.
         },
         (payload) => {
           setMessages((prev) => prev.filter((message) => message.id !== payload.old.id))
@@ -82,9 +112,11 @@ export function useMessages(channelId: string) {
       .subscribe()
 
     return () => {
+      active = false
       supabase.removeChannel(channel)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [channelId])
 
-  return { messages, loading, bottomRef, setMessages, scrollToBottom }
+  return { messages, loading, loadingOlder, hasMore, loadOlder, bottomRef, setMessages, scrollToBottom }
 }

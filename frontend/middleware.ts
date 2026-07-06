@@ -7,7 +7,7 @@ type SupabaseCookie = {
   options: CookieOptions
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -37,11 +37,13 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
   const isAuthPage = pathname.startsWith('/login')
+  const isApiRoute = pathname.startsWith('/api')
   const isAdminPage = pathname.startsWith('/admin')
   const isCourseAdminPage = pathname.startsWith('/admin/courses')
 
-  // Redirect unauthenticated users to login
-  if (!user && !isAuthPage) {
+  // API routes do their own auth and return JSON — never redirect them to the
+  // HTML login page (a redirected fetch would break the caller).
+  if (!user && !isAuthPage && !isApiRoute) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -78,6 +80,8 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/auth/callback).*)',
+    // Exclude static + PWA assets so they stay publicly fetchable (the manifest
+    // and service worker are requested by the browser without a session cookie).
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icon.svg|apple-icon.png|api/auth/callback).*)',
   ],
 }

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 
@@ -7,13 +7,26 @@ export const metadata: Metadata = {
   description: 'Your unified campus platform for communication, events, clubs, and courses.',
 }
 
+// viewport-fit=cover enables env(safe-area-inset-*) on notched/rounded devices.
+// maximumScale is intentionally omitted so users can still pinch-zoom (a11y).
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f7f8fa' },
+    { media: '(prefers-color-scheme: dark)', color: '#16181d' },
+  ],
+}
+
 // Anti-FOUC: runs before React hydration, sets dark class immediately from localStorage
 const themeScript = `
 try {
   var t = localStorage.getItem('cb-theme');
-  if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    document.documentElement.classList.add('dark');
-  }
+  if (!t && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+  var el = document.documentElement;
+  if (t === 'dark' || t === 'charcoal') el.classList.add('dark');
+  if (t === 'charcoal') el.classList.add('charcoal');
 } catch(e) {}
 `
 

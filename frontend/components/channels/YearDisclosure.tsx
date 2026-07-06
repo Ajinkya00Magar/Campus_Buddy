@@ -23,36 +23,37 @@ export default function YearDisclosure({ year, channels, currentYear }: YearDisc
   const activeCount = yearChannels.length
 
   return (
-    <section className="overflow-hidden rounded-[1.5rem] border bg-card shadow-[0_18px_60px_rgba(15,23,42,0.08)] transition-all duration-500 dark:shadow-none">
+    <section className="relative overflow-hidden rounded-[2.5rem] bg-card/60 backdrop-blur-3xl border border-white/20 shadow-[0_24px_80px_rgba(15,23,42,0.08)] transition-all duration-500 dark:border-white/10 dark:shadow-[0_24px_80px_rgba(0,0,0,0.3)]">
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent opacity-50" />
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          'relative w-full overflow-hidden p-6 text-left transition hover:bg-slate-50 dark:hover:bg-slate-900',
-          open ? 'bg-slate-50 dark:bg-slate-950' : 'bg-white dark:bg-slate-900'
+          'relative w-full overflow-hidden p-6 text-left transition duration-500',
+          open ? 'bg-black/5 dark:bg-white/5' : 'hover:bg-black/5 dark:hover:bg-white/5'
         )}
       >
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/10">
-              <Layers3 className="h-7 w-7" />
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between relative z-10">
+          <div className="flex items-start gap-5">
+            <div className="flex h-16 w-16 items-center justify-center rounded-[1.5rem] bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+              <Layers3 className="h-8 w-8" />
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="pt-1">
+              <div className="flex flex-wrap items-center gap-3">
                 <h2 className="text-2xl font-extrabold tracking-tight">{YEAR_LABELS[year]}</h2>
                 {currentYear === year && (
-                  <span className="rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
                     Your year
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1.5 text-sm font-medium text-muted-foreground">
                 Click to {open ? 'collapse' : 'open'} {YEAR_LABELS[year].toLowerCase()} subject channels.
               </p>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <span className="font-semibold text-foreground">{activeCount} active</span>
+          <div className="flex flex-col items-end gap-1.5 text-xs font-bold uppercase tracking-widest text-muted-foreground">
+            <span className="text-foreground">{activeCount} active</span>
             <span>{yearChannels.length} saved channel{yearChannels.length === 1 ? '' : 's'}</span>
           </div>
         </div>
@@ -60,12 +61,12 @@ export default function YearDisclosure({ year, channels, currentYear }: YearDisc
 
       <div
         className={cn(
-          'overflow-hidden transition-all duration-500',
-          open ? 'max-h-screen py-5 px-5' : 'max-h-0 px-5'
+          'overflow-hidden transition-all duration-500 ease-in-out relative z-10',
+          open ? 'max-h-[2000px] opacity-100 py-6 px-6' : 'max-h-0 opacity-0 px-6'
         )}
       >
-        <div className="rounded-2xl border bg-background/70 p-4 shadow-sm dark:bg-slate-950/80">
-          <div className="rounded-2xl border bg-background/70 p-4 shadow-sm dark:bg-slate-950/80">
+        <div className="rounded-[2rem] border border-white/20 bg-background/40 backdrop-blur-md p-6 shadow-sm dark:border-white/10 dark:bg-black/20">
+
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
@@ -177,7 +178,6 @@ export default function YearDisclosure({ year, channels, currentYear }: YearDisc
             </div>
           </div>
         </div>
-      </div>
     </section>
   )
 }

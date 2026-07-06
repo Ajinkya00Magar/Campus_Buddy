@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { validateSignupInput, isValidMitaoeEmail } from '@/lib/validations'
@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { LazyMotion, domAnimation, m } from 'framer-motion'
+import TiltCard from '@/components/motion/TiltCard'
 
 type Mode = 'login' | 'signup'
 
@@ -29,6 +31,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
+  // Gate entrance animations until after hydration so the server HTML and the
+  // first client render are identical (no framer `initial` transforms in SSR).
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const [form, setForm] = useState({
     name: '', email: '', password: '', role: 'student', department: STUDENT_DEPARTMENT_CODE, year: '1'
   })
@@ -106,22 +112,42 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid min-h-screen bg-background text-foreground lg:grid-cols-[0.9fr_1.1fr]">
-      <aside className="hidden border-r bg-[hsl(var(--sidebar-bg))] p-10 text-white lg:flex lg:flex-col lg:justify-between">
-        <div>
-          <div className="mb-6 flex h-11 w-11 items-center justify-center border border-white/15 bg-white/10">
+   <LazyMotion features={domAnimation} strict>
+    <div className="grid min-h-[100dvh] overflow-hidden bg-background text-foreground lg:grid-cols-[0.9fr_1.1fr]">
+      <m.aside
+        initial={mounted ? { x: -60, opacity: 0 } : false}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+        className="relative hidden overflow-hidden border-r bg-[hsl(var(--sidebar-bg))] p-10 text-white lg:flex lg:flex-col lg:justify-between"
+      >
+        {/* Ambient grid-paper texture + floating glow behind the brand panel */}
+        <div className="grid-paper pointer-events-none absolute inset-0 opacity-[0.06]" aria-hidden />
+        <div className="pointer-events-none absolute -left-16 top-1/3 h-64 w-64 rounded-full bg-primary/25 blur-3xl animate-floaty" aria-hidden />
+        <m.div
+          initial={mounted ? { y: 24, opacity: 0 } : false}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.15, duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+          className="relative"
+        >
+          <div className="mb-6 flex h-11 w-11 items-center justify-center border border-white/15 bg-white/10 glow-soft animate-floaty">
             <GraduationCap className="h-6 w-6" />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight">Campus Buddy</h1>
           <p className="mt-3 max-w-sm text-sm leading-6 text-white/68">
             A focused workspace for MIT Academy of Engineering students, professors, and admins.
           </p>
-        </div>
-        <p className="text-xs uppercase tracking-[0.18em] text-white/45">MITAOE campus portal</p>
-      </aside>
+        </m.div>
+        <p className="relative text-xs uppercase tracking-[0.18em] text-white/45">MITAOE campus portal</p>
+      </m.aside>
 
-      <main className="flex min-h-screen items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md animate-fade-in">
+      <main className="flex min-h-[100dvh] items-center justify-center p-4 sm:p-8">
+        <m.div
+          initial={mounted ? { opacity: 0, y: 30, scale: 0.94, rotateX: 10 } : false}
+          animate={{ opacity: 1, y: 0, scale: 1, rotateX: 0 }}
+          transition={{ duration: 0.6, ease: [0.2, 0.9, 0.2, 1.05], delay: 0.1 }}
+          style={{ transformPerspective: 1200 }}
+          className="w-full max-w-md"
+        >
           <div className="mb-6 flex items-center gap-3 lg:hidden">
             <div className="flex h-10 w-10 items-center justify-center border bg-card">
               <GraduationCap className="h-5 w-5 text-primary" />
@@ -132,7 +158,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Card>
+          <TiltCard max={6} className="rounded-lg">
+          <Card className="elev-2 overflow-hidden rounded-lg">
           <CardHeader className="pb-3">
             <CardTitle>
               {mode === 'login' ? 'Welcome back' : 'Create your account'}
@@ -263,9 +290,11 @@ export default function LoginPage() {
               </button>
             </p>
           </CardContent>
-        </Card>
-        </div>
+          </Card>
+          </TiltCard>
+        </m.div>
       </main>
     </div>
+   </LazyMotion>
   )
 }

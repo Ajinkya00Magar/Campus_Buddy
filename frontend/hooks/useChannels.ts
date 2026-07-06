@@ -11,7 +11,7 @@ export function useChannels(initialChannels: Channel[], profile: User | null) {
 
   useEffect(() => {
     setChannels(initialChannels)
-  }, [initialChannels])
+  }, [initialChannels.map(c => c.id).join(',')])
 
   useEffect(() => {
     const channelIdSuffix = Math.random().toString(36).slice(2, 8)
