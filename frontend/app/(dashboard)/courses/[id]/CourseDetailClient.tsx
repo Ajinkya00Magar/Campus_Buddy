@@ -244,7 +244,14 @@ export default function CourseDetailClient({
   }
 
   const handleMarkLiveCourseComplete = async () => {
+    // If already completed, just show the popup again
+    if (isCompleted && !showBadge) {
+      setShowBadge(true)
+      return
+    }
+    // Only prevent duplicate saves if popup is already showing
     if (isCompleted || savingStatus) return
+    
     setSavingStatus(true)
     const completion = saveLocalCourseCompletion(userId, {
       course_id: course.id,
