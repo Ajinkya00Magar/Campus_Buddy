@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import { useSidebar } from '@/contexts/SidebarContext'
 import { useChannels } from '@/hooks/useChannels'
 import { useUnreadBadges } from '@/hooks/useUnreadBadges'
+import { useNotificationCount } from '@/hooks/useNotificationCount'
 import { cn } from '@/lib/utils'
 import { isYearNoticeChannel, shouldShowChannelInSidebar, YEAR_LABELS, YEAR_VALUES } from '@/utils/channelVisibility'
 import {
@@ -33,6 +34,7 @@ export default function Sidebar({ role, channels: initialChannels = [], userId }
   const { isOpen, toggle, close } = useSidebar()
   const channels = useChannels(initialChannels, null)
   const { unreadCounts, mutedChannels } = useUnreadBadges(userId, channels)
+  const notifCount = useNotificationCount(userId)
   const items = role === 'admin'
     ? [...navItems, ...adminItems]
     : ['professor', 'cr'].includes(role)
@@ -46,7 +48,7 @@ export default function Sidebar({ role, channels: initialChannels = [], userId }
         style={{ width: isOpen ? '232px' : '60px' }}
         className="relative z-20 hidden h-full shrink-0 flex-col overflow-hidden border-r border-border bg-slate-100 transition-[width] duration-150 ease-in-out will-change-[width] dark:border-slate-800 dark:bg-slate-950 md:flex"
       >
-        <SidebarInner items={items} pathname={pathname} isOpen={isOpen} toggle={toggle} onNavClick={() => {}} channels={channels} unreadCounts={unreadCounts} mutedChannels={mutedChannels} />
+        <SidebarInner items={items} pathname={pathname} isOpen={isOpen} toggle={toggle} onNavClick={() => {}} channels={channels} unreadCounts={unreadCounts} mutedChannels={mutedChannels} notifCount={notifCount} />
       </aside>
 
       {/* ── Mobile: fixed overlay, slides in ── */}
@@ -56,14 +58,14 @@ export default function Sidebar({ role, channels: initialChannels = [], userId }
         'transition-transform duration-150 ease-in-out',
         isOpen ? 'translate-x-0' : '-translate-x-full',
       )}>
-        <SidebarInner items={items} pathname={pathname} isOpen={true} toggle={toggle} onNavClick={close} channels={channels} unreadCounts={unreadCounts} mutedChannels={mutedChannels} />
+        <SidebarInner items={items} pathname={pathname} isOpen={true} toggle={toggle} onNavClick={close} channels={channels} unreadCounts={unreadCounts} mutedChannels={mutedChannels} notifCount={notifCount} />
       </aside>
     </>
   )
 }
 
 function SidebarInner({
-  items, pathname, isOpen, toggle, onNavClick, channels, unreadCounts, mutedChannels
+  items, pathname, isOpen, toggle, onNavClick, channels, unreadCounts, mutedChannels, notifCount
 }: {
   items: any[]
   pathname: string
@@ -73,6 +75,7 @@ function SidebarInner({
   channels: Channel[]
   unreadCounts: Record<string, number>
   mutedChannels: Set<string>
+  notifCount: number
 }) {
   const [channelsExpanded, setChannelsExpanded] = useState(pathname.startsWith('/channels'))
   
@@ -148,19 +151,11 @@ function SidebarInner({
                   href={href}
                   target={external ? "_blank" : undefined}
                   rel={external ? "noopener noreferrer" : undefined}
-                  onClick={(e) => {
-                    if (isChannelParent) {
-                      setChannelsExpanded(!channelsExpanded)
-                      if (pathname.startsWith('/channels')) {
-                        e.preventDefault()
-                        return // Do not close the mobile sidebar if we're just toggling the menu
-                      }
-                    }
-                    if (!external) onNavClick()
-                  }}
+                  onClick={() => { if (!external) onNavClick() }}
                   className={cn(
                     'interactive-control group/nav relative flex items-center rounded-lg text-sm font-medium transition-all duration-200 ease-smooth',
                     isOpen ? 'gap-3 px-2.5 py-2 hover:translate-x-1' : 'justify-center py-2 hover:scale-110',
+                    isChannelParent && isOpen && 'pr-9',
                     isActive
                       ? 'bg-slate-200 text-slate-900 shadow-sm dark:bg-slate-800 dark:text-slate-100'
                       : 'text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
@@ -171,13 +166,33 @@ function SidebarInner({
                   )}
                   <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200 group-hover/nav:scale-110', isActive && 'text-primary')} />
                   {isOpen && <span className="leading-none truncate flex-1">{label}</span>}
-                  {isActive && isOpen && !isChannelParent && (
+                  {/* Unread notifications badge — mirrors the Navbar bell count */}
+                  {href === '/notifications' && notifCount > 0 && (
+                    <span className={cn(
+                      'shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white',
+                      !isOpen && 'absolute right-1 top-1 px-1'
+                    )}>
+                      {notifCount > 99 ? '99+' : notifCount}
+                    </span>
+                  )}
+                  {isActive && isOpen && !isChannelParent && href !== '/notifications' && (
                     <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shrink-0 animate-glow" />
                   )}
-                  {isChannelParent && isOpen && (
-                    <ChevronDown className={cn("h-3 w-3 opacity-40 transition-transform", channelsExpanded ? "rotate-0" : "-rotate-90")} />
-                  )}
                 </Link>
+
+                {/* Only the arrow toggles the channel dropdown; the label navigates. */}
+                {isChannelParent && isOpen && (
+                  <button
+                    type="button"
+                    onClick={() => setChannelsExpanded((v) => !v)}
+                    aria-expanded={channelsExpanded}
+                    aria-label={channelsExpanded ? 'Collapse channel list' : 'Expand channel list'}
+                    title={channelsExpanded ? 'Collapse' : 'Expand'}
+                    className="interactive-control absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-slate-500 hover:bg-slate-300/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+                  >
+                    <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', channelsExpanded ? 'rotate-0' : '-rotate-90')} />
+                  </button>
+                )}
 
                 {!isOpen && (
                   <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">

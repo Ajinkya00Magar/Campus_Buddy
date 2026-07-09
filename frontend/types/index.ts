@@ -128,13 +128,15 @@ export interface Message {
   id: string
   channel_id: string
   sender_id: string
-  content?: string
+  content?: string | null
   file_url?: string
   file_name?: string
   is_pinned: boolean
   reply_to?: string
   created_at: string
   edited_at?: string
+  deleted_at?: string | null
+  deleted_by?: string | null
   users?: Pick<User, 'name' | 'avatar_url' | 'role'>
 }
 

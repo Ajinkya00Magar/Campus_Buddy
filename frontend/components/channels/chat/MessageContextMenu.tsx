@@ -89,7 +89,7 @@ export function MessageContextMenu({
     const value = message.file_url ?? message.content ?? ''
     if (!value) return
     if (navigator.share) {
-      await navigator.share({ title: message.file_name ?? 'Campus Buddy message', text: message.content, url: message.file_url })
+      await navigator.share({ title: message.file_name ?? 'Campus Buddy message', text: message.content ?? undefined, url: message.file_url })
     } else {
       await navigator.clipboard.writeText(value)
     }

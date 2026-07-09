@@ -4,10 +4,18 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { BookOpen, Clock, Trophy, Layers, Sparkles } from 'lucide-react'
 import { getLevelColor } from '@/lib/utils'
+import { useListControls, type SortOption } from '@/hooks/useListControls'
+import { ListControls } from '@/components/ui/list-controls'
 import Reveal from '@/components/motion/Reveal'
 import { Stagger, StaggerItem } from '@/components/motion/Stagger'
 import TiltCard from '@/components/motion/TiltCard'
 import { SpatialCard } from '@/components/ui/spatial-card'
+
+const COURSE_SORTS: SortOption<any>[] = [
+  { key: 'recent', label: 'Recent', compare: (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime() },
+  { key: 'az', label: 'A–Z', compare: (a, b) => (a.title ?? '').localeCompare(b.title ?? '') },
+  { key: 'modules', label: 'Most content', compare: (a, b) => (b._modules_count ?? 0) - (a._modules_count ?? 0) },
+]
 
 export default function CoursesClient({
   mapped,
@@ -20,6 +28,14 @@ export default function CoursesClient({
   completedIds: Set<string>
   progressMap: Record<string, number>
 }) {
+  const { query, setQuery, sortKey, changeSort, filtered } = useListControls({
+    items: mapped,
+    storageKey: 'courses',
+    searchText: (c: any) => `${c.title ?? ''} ${c.description ?? ''} ${(c.tags ?? []).join(' ')} ${c.level ?? ''}`,
+    sorts: COURSE_SORTS,
+    defaultSort: 'recent',
+  })
+
   return (
     <div className="mx-auto max-w-7xl space-y-7">
       <Reveal as="section" direction="down" pop onView={false} className="relative overflow-hidden rounded-[2.5rem] bg-card/60 backdrop-blur-3xl border border-white/20 p-6 shadow-[0_24px_80px_rgba(6,95,70,0.12)] dark:border-white/10 dark:shadow-[0_24px_80px_rgba(0,0,0,0.3)] md:p-8">
@@ -43,14 +59,27 @@ export default function CoursesClient({
         </div>
       </Reveal>
 
+      {mapped.length > 0 && (
+        <ListControls
+          query={query} onQuery={setQuery}
+          sortKey={sortKey} onSort={changeSort} sorts={COURSE_SORTS}
+          placeholder="Search courses…" resultCount={filtered.length}
+        />
+      )}
+
       {mapped.length === 0 ? (
         <div className="text-center py-16">
           <BookOpen className="h-12 w-12 text-gray-200 mx-auto mb-3" />
           <p className="text-muted-foreground">No courses available yet</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <BookOpen className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground">No courses match “{query}”.</p>
+        </div>
       ) : (
         <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mapped.map((course: any) => {
+          {filtered.map((course: any) => {
             const done = completedIds.has(course.id)
             const completed = progressMap[course.id] ?? 0
             const total = course._modules_count

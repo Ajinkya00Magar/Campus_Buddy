@@ -186,7 +186,21 @@ CREATE TABLE IF NOT EXISTS public.messages (
   is_pinned  BOOLEAN DEFAULT FALSE,
   reply_to   UUID REFERENCES public.messages(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  edited_at  TIMESTAMPTZ
+  edited_at  TIMESTAMPTZ,
+  -- Soft "delete for everyone" (WhatsApp-style tombstone)
+  deleted_at TIMESTAMPTZ,
+  deleted_by UUID REFERENCES public.users(id) ON DELETE SET NULL
+);
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS deleted_by UUID REFERENCES public.users(id) ON DELETE SET NULL;
+
+-- HIDDEN MESSAGES ("delete for me" — per-user, syncs across devices)
+CREATE TABLE IF NOT EXISTS public.hidden_messages (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  message_id UUID NOT NULL REFERENCES public.messages(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id, message_id)
 );
 
 -- MESSAGE REACTIONS (multiple distinct emojis per user per message)
@@ -298,6 +312,7 @@ CREATE INDEX IF NOT EXISTS idx_poll_votes_poll          ON public.poll_votes(pol
 CREATE INDEX IF NOT EXISTS idx_channels_year_dept       ON public.channels(type, year, department);
 CREATE INDEX IF NOT EXISTS idx_bookmarks_user           ON public.bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user  ON public.push_subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_hidden_messages_user      ON public.hidden_messages(user_id);
 
 -- ============================================================
 -- 3. ACCESS-CONTROL HELPER FUNCTIONS
@@ -427,6 +442,7 @@ ALTER TABLE public.notifications          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookmarks              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.message_reports        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_subscriptions     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.hidden_messages        ENABLE ROW LEVEL SECURITY;
 
 -- USERS
 DROP POLICY IF EXISTS "users_read"   ON public.users;
@@ -556,6 +572,10 @@ CREATE POLICY "bookmarks_own" ON public.bookmarks FOR ALL USING (auth.uid() = us
 DROP POLICY IF EXISTS "push_subs_own" ON public.push_subscriptions;
 CREATE POLICY "push_subs_own" ON public.push_subscriptions FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+-- HIDDEN MESSAGES — own rows only
+DROP POLICY IF EXISTS "hidden_messages_own" ON public.hidden_messages;
+CREATE POLICY "hidden_messages_own" ON public.hidden_messages FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
 -- MESSAGE REPORTS — a user files/sees their own reports (only for messages they
 -- can access); staff read/triage every report; admins may delete.
 DROP POLICY IF EXISTS "reports_read"   ON public.message_reports;
@@ -599,6 +619,27 @@ DROP TRIGGER IF EXISTS trg_message_rate_limit ON public.messages;
 CREATE TRIGGER trg_message_rate_limit
   BEFORE INSERT ON public.messages
   FOR EACH ROW EXECUTE FUNCTION public.enforce_message_rate_limit();
+
+-- "Delete for everyone" is only allowed within 15 minutes of sending, unless
+-- the actor is staff (admin/professor/cr, e.g. moderation). Enforced server-side.
+CREATE OR REPLACE FUNCTION public.enforce_delete_window()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL THEN
+    IF public.current_user_role() NOT IN ('admin', 'professor', 'cr')
+       AND OLD.created_at < NOW() - INTERVAL '15 minutes' THEN
+      RAISE EXCEPTION 'The 15-minute window to delete for everyone has passed.'
+        USING ERRCODE = 'check_violation';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_delete_window ON public.messages;
+CREATE TRIGGER trg_delete_window
+  BEFORE UPDATE ON public.messages
+  FOR EACH ROW EXECUTE FUNCTION public.enforce_delete_window();
 
 -- ============================================================
 -- 5b. ADMIN ANALYTICS (aggregation RPCs)

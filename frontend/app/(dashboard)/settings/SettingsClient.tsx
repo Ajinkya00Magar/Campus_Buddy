@@ -16,12 +16,12 @@ import { generateCourseCertificate } from '@/utils/courseCertificates'
 import { getProfileDepartmentDisplay, STUDENT_DEPARTMENT_SHORT } from '@/utils/department'
 import { getLocalCourseCompletions, type LocalCourseCompletion } from '@/utils/localCourseCompletions'
 import {
-  Sun, Moon, User, BookOpen, Users2,
+  Sun, Palette, User, BookOpen, Users2,
   Trophy, LogOut, Shield, Mail, Pencil, Check, X, Camera, Loader2, Trash2
 } from 'lucide-react'
 import type { User as UserType } from '@/types'
 
-type ThemeOption = 'light' | 'dark'
+type ThemeOption = 'light' | 'charcoal'
 
 export default function SettingsClient({
   profile,
@@ -149,8 +149,8 @@ export default function SettingsClient({
   }
 
   const themeOptions: { value: ThemeOption; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-    { value: 'light', label: 'Light', icon: Sun },
-    { value: 'dark',  label: 'Dark',  icon: Moon },
+    { value: 'light',    label: 'Light',    icon: Sun },
+    { value: 'charcoal', label: 'Charcoal', icon: Palette },
   ]
 
   if (!profile) return null
@@ -353,12 +353,12 @@ export default function SettingsClient({
               >
                 <div className={cn(
                   'w-full h-14 rounded-xl border overflow-hidden relative',
-                  value === 'dark' ? 'bg-slate-900' : 'bg-slate-50'
+                  value === 'charcoal' ? 'bg-slate-900' : 'bg-slate-50'
                 )}>
-                  <div className={cn('h-3.5 w-full', value === 'dark' ? 'bg-slate-800' : 'bg-white border-b')} />
+                  <div className={cn('h-3.5 w-full', value === 'charcoal' ? 'bg-slate-800' : 'bg-white border-b')} />
                   <div className="flex flex-col gap-1 p-2">
-                    <div className={cn('h-1.5 rounded w-10', value === 'dark' ? 'bg-slate-700' : 'bg-slate-200')} />
-                    <div className={cn('h-1.5 rounded w-6', value === 'dark' ? 'bg-primary/40' : 'bg-primary/20')} />
+                    <div className={cn('h-1.5 rounded w-10', value === 'charcoal' ? 'bg-slate-700' : 'bg-slate-200')} />
+                    <div className={cn('h-1.5 rounded w-6', value === 'charcoal' ? 'bg-primary/40' : 'bg-primary/20')} />
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider">

@@ -19,14 +19,15 @@ export const viewport: Viewport = {
   ],
 }
 
-// Anti-FOUC: runs before React hydration, sets dark class immediately from localStorage
+// Anti-FOUC: runs before React hydration, applies the theme from localStorage.
+// Themes are Light + Charcoal; the legacy 'dark' value maps to charcoal.
 const themeScript = `
 try {
   var t = localStorage.getItem('cb-theme');
-  if (!t && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'dark';
+  if (t === 'dark') t = 'charcoal';
+  if (!t && window.matchMedia('(prefers-color-scheme: dark)').matches) t = 'charcoal';
   var el = document.documentElement;
-  if (t === 'dark' || t === 'charcoal') el.classList.add('dark');
-  if (t === 'charcoal') el.classList.add('charcoal');
+  if (t === 'charcoal') { el.classList.add('dark'); el.classList.add('charcoal'); }
 } catch(e) {}
 `
 

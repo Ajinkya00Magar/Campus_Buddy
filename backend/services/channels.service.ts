@@ -145,6 +145,43 @@ export async function deleteMessage(messageId: string) {
   return { error }
 }
 
+/** Delete for everyone: soft-delete (tombstone) + strip content. Syncs via realtime UPDATE. */
+export async function deleteMessageForEveryone(messageId: string, userId: string) {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('messages')
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: userId,
+      content: null,
+      file_url: null,
+      file_name: null,
+      is_pinned: false,
+    })
+    .eq('id', messageId)
+  return { error }
+}
+
+/** Delete for me: hide the message for this user only (per-device sync via DB). */
+export async function deleteMessageForMe(userId: string, messageId: string) {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('hidden_messages')
+    .upsert({ user_id: userId, message_id: messageId }, { onConflict: 'user_id,message_id' })
+  return { error }
+}
+
+export async function getHiddenMessageIds(userId: string, channelId?: string): Promise<string[]> {
+  const supabase = createClient()
+  let query = supabase
+    .from('hidden_messages')
+    .select('message_id, messages!inner(channel_id)')
+    .eq('user_id', userId)
+  if (channelId) query = query.eq('messages.channel_id', channelId)
+  const { data } = await query
+  return (data ?? []).map((row) => row.message_id as string)
+}
+
 export async function pinMessage(messageId: string, pin: boolean) {
   const supabase = createClient()
   const { error } = await supabase

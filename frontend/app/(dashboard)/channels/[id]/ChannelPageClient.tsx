@@ -10,7 +10,9 @@ import { useMessages } from '@/hooks/useMessages'
 import { usePresence } from '@/hooks/usePresence'
 import {
   createPoll,
-  deleteMessage,
+  deleteMessageForEveryone,
+  deleteMessageForMe,
+  getHiddenMessageIds,
   getBookmarkedMessageIds,
   getChannelMembers,
   getChannelPolls,
@@ -65,6 +67,7 @@ import {
   Search,
   Send,
   Share2,
+  Sparkles,
   SmilePlus,
   SquareCheck,
   Star,
@@ -141,6 +144,7 @@ const emojiPalette = [
   },
 ]
 const defaultStats: ChannelStats = { members: 0, media: 0, docs: 0, links: 0 }
+const AI_ENABLED = process.env.NEXT_PUBLIC_AI_ENABLED === 'true'
 
 import {
   type ChatFilter,
@@ -168,6 +172,8 @@ import { PollTimelineItem } from '@/components/channels/chat/PollComponents'
 import { ChatFilters } from '@/components/channels/chat/ChatFilters'
 import { MessageContextMenu } from '@/components/channels/chat/MessageContextMenu'
 import { MessageList, PlusAttachmentMenu, EmojiPaletteMenu } from '@/components/channels/chat/MessageList'
+import { AudioRecorder } from '@/components/channels/chat/AudioRecorder'
+import { shareContent, channelShareUrl } from '@/utils/share'
 
 export default function ChannelPageClient({
   channel,
@@ -204,6 +210,7 @@ export default function ChannelPageClient({
   const [polls, setPolls] = useState<Poll[]>([])
   const [stats, setStats] = useState<ChannelStats>(defaultStats)
   const [recording, setRecording] = useState(false)
+  const [showRecorder, setShowRecorder] = useState(false)
   const [showPollForm, setShowPollForm] = useState(false)
   const [pollQuestion, setPollQuestion] = useState('')
   const [pollOptions, setPollOptions] = useState(['', ''])
@@ -215,6 +222,15 @@ export default function ChannelPageClient({
   const [reportTarget, setReportTarget] = useState<Message | null>(null)
   const [reportReason, setReportReason] = useState('')
   const [reporting, setReporting] = useState(false)
+  const [showScrollDown, setShowScrollDown] = useState(false)
+  const [summaryOpen, setSummaryOpen] = useState(false)
+  const [summary, setSummary] = useState('')
+  const [summarizing, setSummarizing] = useState(false)
+  const [floatingDate, setFloatingDate] = useState<string | null>(null)
+  const dateHideTimer = useRef<number | null>(null)
+  const [hiddenIds, setHiddenIds] = useState<string[]>([])
+  const [deleteTarget, setDeleteTarget] = useState<Message | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const documentRef = useRef<HTMLInputElement>(null)
   const mediaRef = useRef<HTMLInputElement>(null)
@@ -224,17 +240,21 @@ export default function ChannelPageClient({
   const recorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
 
-  const pinned = messages.find((m) => m.is_pinned)
+  // Exclude messages this user deleted-for-me.
+  const hiddenSet = useMemo(() => new Set(hiddenIds), [hiddenIds])
+  const visibleMessages = useMemo(() => messages.filter((m) => !hiddenSet.has(m.id)), [messages, hiddenSet])
+
+  const pinned = visibleMessages.find((m) => m.is_pinned)
   const isStaff = currentUser?.role === 'admin' || currentUser?.role === 'professor' || currentUser?.role === 'cr'
   const canPin = isStaff
   // Announcement-only channels (post_policy === 'staff') accept posts from staff only.
   const canPost = isStaff || channel.post_policy !== 'staff'
   const meta = typeMeta[channel.type]
   const reactionGroups = useMemo(() => groupReactions(reactions, currentUser?.id), [reactions, currentUser?.id])
-  const messageById = useMemo(() => new Map(messages.map((message) => [message.id, message])), [messages])
+  const messageById = useMemo(() => new Map(visibleMessages.map((message) => [message.id, message])), [visibleMessages])
   const filteredMessages = useMemo(
-    () => filterMessages(messages, activeFilter, searchQuery, starredIds),
-    [messages, activeFilter, searchQuery, starredIds]
+    () => filterMessages(visibleMessages, activeFilter, searchQuery, starredIds),
+    [visibleMessages, activeFilter, searchQuery, starredIds]
   )
   const filteredPolls = useMemo(
     () => filterPolls(polls, activeFilter, searchQuery),
@@ -257,13 +277,13 @@ export default function ChannelPageClient({
     ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
     [filteredMessages, filteredPolls]
   )
-  const mediaItems = useMemo(() => messages.filter((message) => {
+  const mediaItems = useMemo(() => visibleMessages.filter((message) => {
     if (!message.file_url) return false
     const kind = getFileKind(message.file_name ?? '', message.file_url)
     return kind === 'image' || kind === 'video' || kind === 'audio'
-  }), [messages])
-  const docItems = useMemo(() => messages.filter((message) => message.file_url && ['document', 'office', 'pdf'].includes(getFileKind(message.file_name ?? '', message.file_url))), [messages])
-  const linkItems = useMemo(() => messages.flatMap((message) => extractLinks(message.content ?? '').map((url) => ({ url, message }))), [messages])
+  }), [visibleMessages])
+  const docItems = useMemo(() => visibleMessages.filter((message) => message.file_url && ['document', 'office', 'pdf'].includes(getFileKind(message.file_name ?? '', message.file_url))), [visibleMessages])
+  const linkItems = useMemo(() => visibleMessages.flatMap((message) => extractLinks(message.content ?? '').map((url) => ({ url, message }))), [visibleMessages])
 
   const mentionSuggestions = useMemo(() => {
     if (!mentionQuery) return []
@@ -282,12 +302,40 @@ export default function ChannelPageClient({
       .slice(0, 10) // Limit to 10
   }, [mentionQuery, channelMembers, currentUser?.id])
 
+  const formatDateLabel = (iso: string) => {
+    const d = new Date(iso)
+    const today = new Date()
+    const yesterday = new Date(); yesterday.setDate(today.getDate() - 1)
+    if (d.toDateString() === today.toDateString()) return 'Today'
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' })
+  }
+
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const el = event.currentTarget
+
+    // Infinite history
     if (el.scrollTop <= 80 && hasMore && !loadingOlder) {
       prevScrollRef.current = { height: el.scrollHeight, top: el.scrollTop }
       loadOlder()
     }
+
+    // Scroll-to-bottom button
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    setShowScrollDown(distanceFromBottom > 240)
+
+    // Floating date pill — date of the topmost visible message
+    const rows = el.querySelectorAll<HTMLElement>('.chat-message-row[data-ts]')
+    const containerTop = el.getBoundingClientRect().top
+    for (const row of rows) {
+      if (row.getBoundingClientRect().bottom >= containerTop + 8) {
+        const ts = row.getAttribute('data-ts')
+        if (ts) setFloatingDate(formatDateLabel(ts))
+        break
+      }
+    }
+    if (dateHideTimer.current) window.clearTimeout(dateHideTimer.current)
+    dateHideTimer.current = window.setTimeout(() => setFloatingDate(null), 1400)
   }
 
   // After a "load older" prepend, keep the viewport on the same message.
@@ -304,6 +352,9 @@ export default function ChannelPageClient({
     let active = true
     getBookmarkedMessageIds(currentUser.id, channel.id).then((ids) => {
       if (active) setStarredIds(ids)
+    })
+    getHiddenMessageIds(currentUser.id, channel.id).then((ids) => {
+      if (active) setHiddenIds(ids)
     })
     return () => { active = false }
   }, [channel.id, currentUser])
@@ -505,14 +556,48 @@ export default function ChannelPageClient({
     setText(message.content ?? '')
   }
 
-  const handleDelete = async (message: Message) => {
+  const handleDelete = (message: Message) => {
     if (message.id.startsWith('pending-')) return
-    const { error } = await deleteMessage(message.id)
+    setDeleteTarget(message)
+  }
+
+  const DELETE_EVERYONE_WINDOW_MS = 15 * 60 * 1000
+
+  const canDeleteForEveryone = (message: Message | null) => {
+    if (!message || !currentUser) return false
+    const isMine = message.sender_id === currentUser.id
+    const withinWindow = Date.now() - new Date(message.created_at).getTime() < DELETE_EVERYONE_WINDOW_MS
+    return (isMine && withinWindow) || isStaff
+  }
+
+  const handleDeleteForEveryone = async () => {
+    if (!deleteTarget || !currentUser || deleting) return
+    setDeleting(true)
+    const { error } = await deleteMessageForEveryone(deleteTarget.id, currentUser.id)
+    setDeleting(false)
     if (error) {
       toast({ title: 'Delete failed', description: error.message, variant: 'destructive' })
       return
     }
-    setMessages((prev) => prev.filter((item) => item.id !== message.id))
+    // Optimistic tombstone (realtime UPDATE will confirm for everyone else).
+    setMessages((prev) => prev.map((m) => m.id === deleteTarget.id
+      ? { ...m, deleted_at: new Date().toISOString(), content: null, file_url: undefined, file_name: undefined, is_pinned: false }
+      : m))
+    setDeleteTarget(null)
+  }
+
+  const handleDeleteForMe = async () => {
+    if (!deleteTarget || !currentUser || deleting) return
+    setDeleting(true)
+    const target = deleteTarget
+    setHiddenIds((prev) => prev.includes(target.id) ? prev : [...prev, target.id])
+    setDeleteTarget(null)
+    const { error } = await deleteMessageForMe(currentUser.id, target.id)
+    setDeleting(false)
+    if (error) {
+      setHiddenIds((prev) => prev.filter((id) => id !== target.id))
+      toast({ title: 'Delete failed', description: error.message, variant: 'destructive' })
+    }
   }
 
   const handleCopy = async (message: Message) => {
@@ -526,6 +611,31 @@ export default function ChannelPageClient({
     if (message.id.startsWith('pending-')) return
     setReportReason('')
     setReportTarget(message)
+  }
+
+  const handleSummarize = async () => {
+    setSummaryOpen(true)
+    setSummarizing(true)
+    setSummary('')
+    try {
+      const res = await fetch('/api/ai/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: channel.id }),
+      })
+      const data = await res.json().catch(() => null)
+      setSummary(
+        data?.summary
+          ? data.summary
+          : data?.reason === 'ai-not-configured'
+            ? 'AI summaries aren’t enabled yet.'
+            : 'Could not generate a summary right now.'
+      )
+    } catch {
+      setSummary('Network error — please try again.')
+    } finally {
+      setSummarizing(false)
+    }
   }
 
   const submitReport = async () => {
@@ -828,6 +938,30 @@ export default function ChannelPageClient({
               className="w-32 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground focus:w-48 transition-all"
             />
           </div>
+          {AI_ENABLED && (
+            <button
+              onClick={handleSummarize}
+              className="interactive-control flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title="AI summary of recent discussion"
+            >
+              <Sparkles className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={async () => {
+              const result = await shareContent({
+                title: `#${channel.name}`,
+                text: channel.description || `Join #${channel.name} on Campus Buddy`,
+                url: channelShareUrl(channel.id),
+              })
+              if (result === 'copied') toast({ title: 'Link copied' })
+              else if (result === 'failed') toast({ title: 'Could not share', variant: 'destructive' })
+            }}
+            className="interactive-control flex h-8 w-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            title="Share channel"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
           <button
             onClick={() => setShowInfo((value) => !value)}
             className={cn(
@@ -942,6 +1076,15 @@ export default function ChannelPageClient({
               </div>
             )}
 
+            {/* Floating date indicator */}
+            {floatingDate && (
+              <div className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2 animate-fade-in">
+                <span className="rounded-full border bg-card/95 px-3 py-1 text-[11px] font-semibold text-muted-foreground shadow-sm backdrop-blur">
+                  {floatingDate}
+                </span>
+              </div>
+            )}
+
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
@@ -981,6 +1124,17 @@ export default function ChannelPageClient({
               )}
               <div ref={bottomRef} />
             </div>
+
+            {/* Scroll-to-bottom */}
+            {showScrollDown && (
+              <button
+                onClick={() => { scrollToBottom('smooth'); setShowScrollDown(false) }}
+                aria-label="Scroll to latest messages"
+                className="interactive-control absolute bottom-24 right-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border bg-card text-foreground shadow-md transition hover:bg-accent animate-in fade-in zoom-in-95"
+              >
+                <ChevronDown className="h-5 w-5" />
+              </button>
+            )}
 
             <footer className="border-t bg-card px-4 py-3 pb-safe-plus shrink-0 z-30 relative">
               {(sending || uploading || recording) && (
@@ -1035,6 +1189,12 @@ export default function ChannelPageClient({
                   <LockIcon className="h-4 w-4 shrink-0" />
                   <span>Only admins and faculty can post in this announcement channel.</span>
                 </div>
+              ) : showRecorder ? (
+                <AudioRecorder
+                  sending={uploading}
+                  onClose={() => setShowRecorder(false)}
+                  onSend={async (file) => { setShowRecorder(false); await shareFile(file) }}
+                />
               ) : (
               <div className="flex items-end gap-1.5 border bg-background p-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/20">
                 <input ref={documentRef} type="file" className="hidden" onChange={handleFile} />
@@ -1089,13 +1249,10 @@ export default function ChannelPageClient({
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
-                    onClick={handleVoiceNote}
+                    onClick={() => setShowRecorder(true)}
                     disabled={uploading || sending}
-                    className={cn(
-                      'interactive-control flex h-9 w-9 items-center justify-center transition disabled:cursor-not-allowed disabled:opacity-50',
-                      recording ? 'bg-red-500 text-white focus-pulse' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                    )}
-                    title={recording ? 'Stop recording' : 'Voice note'}
+                    className="interactive-control flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    title="Record voice note"
                   >
                     <Mic className="h-4 w-4" />
                   </button>
@@ -1127,6 +1284,53 @@ export default function ChannelPageClient({
             />
           )}
         </div>
+
+        <Dialog open={summaryOpen} onOpenChange={setSummaryOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" /> Channel summary
+              </DialogTitle>
+              <DialogDescription>AI digest of recent discussion in #{channel.name}.</DialogDescription>
+            </DialogHeader>
+            {summarizing ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Summarizing…
+              </div>
+            ) : (
+              <p className="max-h-[50vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                {summary}
+              </p>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null) }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Delete message?</DialogTitle>
+              <DialogDescription>
+                {canDeleteForEveryone(deleteTarget)
+                  ? 'You can delete this for everyone, or just remove it from your view.'
+                  : 'This will remove the message from your view only.'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2">
+              {canDeleteForEveryone(deleteTarget) && (
+                <Button variant="destructive" onClick={handleDeleteForEveryone} disabled={deleting} className="w-full justify-center gap-2">
+                  {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Delete for everyone
+                </Button>
+              )}
+              <Button variant="outline" onClick={handleDeleteForMe} disabled={deleting} className="w-full justify-center gap-2">
+                <Trash2 className="h-4 w-4" /> Delete for me
+              </Button>
+              <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting} className="w-full justify-center">
+                Cancel
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={!!reportTarget} onOpenChange={(o) => { if (!o) setReportTarget(null) }}>
           <DialogContent className="max-w-md">

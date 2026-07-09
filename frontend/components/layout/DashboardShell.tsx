@@ -1,6 +1,7 @@
 'use client'
 import { ThemeProvider } from './ThemeContext'
 import { SidebarProvider, useSidebar } from '@/contexts/SidebarContext'
+import { useProfileSync } from '@/hooks/useProfileSync'
 
 import Sidebar from './Sidebar'
 import Navbar from './Navbar'
@@ -8,11 +9,16 @@ import { usePathname } from 'next/navigation'
 import { cn } from '../../../backend/lib/utils'
 import MotionProvider from '@/components/motion/MotionProvider'
 import PageTransition from '@/components/motion/PageTransition'
+import AiAssistant from '@/components/ai/AiAssistant'
 import type { User, Channel } from '@/types'
+
+const AI_ENABLED = process.env.NEXT_PUBLIC_AI_ENABLED === 'true'
 
 function Shell({ user, channels: initialChannels, children }: { user: User | null; channels: Channel[]; children: React.ReactNode }) {
   const { isOpen, close } = useSidebar()
   const pathname = usePathname()
+  // Live-sync this user's profile (role/year/dept) when an admin edits it.
+  useProfileSync(user?.id)
   const isChannelPage = pathname.startsWith('/channels/')
   const isEmbeddedResourcePage = pathname === '/notes' || pathname === '/pyqs'
   const isCourseDetailPage = pathname.startsWith('/courses/')
@@ -39,6 +45,8 @@ function Shell({ user, channels: initialChannels, children }: { user: User | nul
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
+
+      {AI_ENABLED && <AiAssistant />}
     </div>
   )
 }

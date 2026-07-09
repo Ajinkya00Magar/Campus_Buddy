@@ -14,7 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast'
 import { GraduationCap, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import { LazyMotion, domAnimation, m } from 'framer-motion'
-import TiltCard from '@/components/motion/TiltCard'
 
 type Mode = 'login' | 'signup'
 
@@ -158,7 +157,8 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <TiltCard max={6} className="rounded-lg">
+          {/* No 3D tilt on the auth card: a mouse-tracking transform makes the
+              form fields/button shift under the cursor and breaks click hit-testing. */}
           <Card className="elev-2 overflow-hidden rounded-lg">
           <CardHeader className="pb-3">
             <CardTitle>
@@ -291,7 +291,6 @@ export default function LoginPage() {
             </p>
           </CardContent>
           </Card>
-          </TiltCard>
         </m.div>
       </main>
     </div>

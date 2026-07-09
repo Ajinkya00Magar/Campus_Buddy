@@ -12,7 +12,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings, Menu, Sun, Moon, Palette } from 'lucide-react'
+import { LogOut, User, Settings, Menu, Sun, Palette } from 'lucide-react'
 import { getProfileDepartmentDisplay, STUDENT_DEPARTMENT_SHORT } from '@/utils/department'
 import type { User as UserType } from '@/types'
 
@@ -54,15 +54,14 @@ export default function Navbar({ user }: { user: UserType | null }) {
       {/* Global search (⌘K) */}
       <GlobalSearch />
 
-      {/* Theme toggle — cycles light → dark → charcoal */}
+      {/* Theme toggle — Light ↔ Charcoal */}
       <button
         onClick={toggleTheme}
-        aria-label={`Theme: ${theme}. Click to switch.`}
-        title={`Theme: ${theme}`}
+        aria-label={theme === 'light' ? 'Switch to charcoal theme' : 'Switch to light theme'}
+        title={theme === 'light' ? 'Light — click for Charcoal' : 'Charcoal — click for Light'}
         className="interactive-control lift flex h-9 w-9 items-center justify-center text-muted-foreground transition hover:bg-accent hover:text-foreground"
       >
         {theme === 'light'    && <Sun     className="h-4.5 w-4.5" />}
-        {theme === 'dark'     && <Moon    className="h-4.5 w-4.5" />}
         {theme === 'charcoal' && <Palette className="h-4.5 w-4.5 text-primary" />}
       </button>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Calendar, MapPin, Users, Sparkles, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -31,8 +31,20 @@ export default function EventsClient({
   userId: string
 }) {
   const events = useEvents(initialEvents)
-  const [category, setCategory] = useState('all')
+  const [category, setCategoryState] = useState('all')
   const [search, setSearch] = useState('')
+
+  // Remember the last selected category across visits.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('cb-filter:events')
+      if (saved && CATEGORIES.includes(saved)) setCategoryState(saved)
+    } catch {}
+  }, [])
+  const setCategory = (cat: string) => {
+    setCategoryState(cat)
+    try { localStorage.setItem('cb-filter:events', cat) } catch {}
+  }
 
   const filtered = events.filter((e) => {
     const matchCat = category === 'all' || e.category === category

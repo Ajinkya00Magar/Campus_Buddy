@@ -3,14 +3,29 @@
 import Link from 'next/link'
 import { Sparkles, Users2, Trophy } from 'lucide-react'
 import { useClubs } from '@/hooks/useClubs'
+import { useListControls, type SortOption } from '@/hooks/useListControls'
+import { ListControls } from '@/components/ui/list-controls'
 import Reveal from '@/components/motion/Reveal'
 import { Stagger, StaggerItem } from '@/components/motion/Stagger'
 import TiltCard from '@/components/motion/TiltCard'
 import { SpatialCard } from '@/components/ui/spatial-card'
 import type { Club } from '@/types'
 
+const CLUB_SORTS: SortOption<Club>[] = [
+  { key: 'popular', label: 'Most members', compare: (a, b) => (b._members_count ?? 0) - (a._members_count ?? 0) },
+  { key: 'recent', label: 'Recent', compare: (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime() },
+  { key: 'az', label: 'A–Z', compare: (a, b) => a.name.localeCompare(b.name) },
+]
+
 export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) {
   const clubs = useClubs(initialClubs)
+  const { query, setQuery, sortKey, changeSort, filtered } = useListControls({
+    items: clubs,
+    storageKey: 'clubs',
+    searchText: (c) => `${c.name} ${c.category ?? ''} ${c.description ?? ''}`,
+    sorts: CLUB_SORTS,
+    defaultSort: 'popular',
+  })
 
   return (
     <div className="mx-auto max-w-7xl space-y-7">
@@ -27,14 +42,27 @@ export default function ClubsClient({ initialClubs }: { initialClubs: Club[] }) 
         </div>
       </Reveal>
 
+      {clubs.length > 0 && (
+        <ListControls
+          query={query} onQuery={setQuery}
+          sortKey={sortKey} onSort={changeSort} sorts={CLUB_SORTS}
+          placeholder="Search clubs…" resultCount={filtered.length}
+        />
+      )}
+
       {clubs.length === 0 ? (
         <div className="text-center py-16">
           <Users2 className="h-12 w-12 text-gray-200 mx-auto mb-3" />
           <p className="text-muted-foreground">No clubs yet</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16">
+          <Users2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-muted-foreground">No clubs match “{query}”.</p>
+        </div>
       ) : (
         <Stagger className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clubs.map((club) => (
+          {filtered.map((club) => (
             <StaggerItem key={club.id} className="h-full">
             <Link href={`/clubs/${club.id}`} className="block h-full group">
               <TiltCard max={4} className="h-full rounded-[2rem]">

@@ -2,13 +2,13 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
-export type Theme = 'light' | 'dark' | 'charcoal'
+export type Theme = 'light' | 'charcoal'
 
-export const THEMES: Theme[] = ['light', 'dark', 'charcoal']
+export const THEMES: Theme[] = ['light', 'charcoal']
 
 interface ThemeCtx {
   theme: Theme
-  /** Cycles light → dark → charcoal → light */
+  /** Cycles light ↔ charcoal */
   toggle: () => void
   setTheme: (t: Theme) => void
 }
@@ -21,26 +21,33 @@ const ThemeContext = createContext<ThemeCtx>({
 
 function apply(t: Theme) {
   const root = document.documentElement
-  // `dark` class also activates for charcoal so Tailwind's dark: variants
-  // (and any dark-aware component styles) still apply on the darkest theme.
-  root.classList.toggle('dark', t === 'dark' || t === 'charcoal')
+  // Charcoal is the dark theme; it keeps the `dark` class so Tailwind's `dark:`
+  // variants (used across the app) still apply, plus `charcoal` for its palette.
+  root.classList.toggle('dark', t === 'charcoal')
   root.classList.toggle('charcoal', t === 'charcoal')
+}
+
+// Normalize any stored/legacy value (the old standalone 'dark' theme was removed
+// and now maps to charcoal).
+function normalize(raw: string | null): Theme {
+  if (raw === 'light') return 'light'
+  if (raw === 'charcoal' || raw === 'dark') return 'charcoal'
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    return 'charcoal'
+  }
+  return 'light'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light')
 
-  // On mount: read persisted preference or OS preference
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('cb-theme') as Theme | null
-      if (stored && THEMES.includes(stored)) {
-        apply(stored)
-        setThemeState(stored)
-      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        apply('dark')
-        setThemeState('dark')
-      }
+      const raw = localStorage.getItem('cb-theme')
+      const resolved = normalize(raw)
+      apply(resolved)
+      setThemeState(resolved)
+      if (raw !== resolved) localStorage.setItem('cb-theme', resolved)
     } catch {}
   }, [])
 
@@ -51,8 +58,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }
 
   function toggle() {
-    const idx = THEMES.indexOf(theme)
-    setTheme(THEMES[(idx + 1) % THEMES.length])
+    setTheme(theme === 'light' ? 'charcoal' : 'light')
   }
 
   return (

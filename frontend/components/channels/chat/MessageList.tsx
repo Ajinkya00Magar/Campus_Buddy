@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { 
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import {
   File as FileIcon, Images, Camera, Headphones, Contact, BarChart2, CalendarDays, SmilePlus, Plus,
-  Star, Pin, Loader2, ChevronDown
+  Star, Pin, Loader2, ChevronDown, Ban, Reply
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -18,6 +19,8 @@ import {
 import { PollTimelineItem } from './PollComponents'
 import { FilePreview } from './UIComponents'
 import { MessageContextMenu } from './MessageContextMenu'
+
+const longPressReactions = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
 const emojiPalette = [
   {
@@ -67,7 +70,7 @@ export function PlusAttachmentMenu({
     { label: 'Contact', icon: <Contact className="h-5 w-5" />, tone: 'text-cyan-500', action: onContact },
     { label: 'Poll', icon: <BarChart2 className="h-5 w-5" />, tone: 'text-amber-500', action: onPoll },
     { label: 'Event', icon: <CalendarDays className="h-5 w-5" />, tone: 'text-rose-500', action: onEvent },
-    { label: 'New sticker', icon: <SmilePlus className="h-5 w-5" />, tone: 'text-emerald-500', action: onSticker },
+    { label: 'Sticker', icon: <SmilePlus className="h-5 w-5" />, tone: 'text-emerald-500', action: onSticker },
   ]
 
   return (
@@ -173,10 +176,41 @@ export function MessageList({
   starredIds: string[]
 }) {
   const [contextMenu, setContextMenu] = useState<MessageContextMenuState | null>(null)
+  // Long-press (mobile) opens a reactions-only bar — NOT the full menu (WhatsApp-style).
+  const [reactionBar, setReactionBar] = useState<MessageContextMenuState | null>(null)
+  const longPressTimer = useRef<number | null>(null)
+  const suppressContext = useRef(false)
+  // Swipe-to-reply (touch): track the actively-swiped row + horizontal offset.
+  const [swipe, setSwipe] = useState<{ id: string; dx: number } | null>(null)
+  const swipeStart = useRef<{ x: number; y: number } | null>(null)
+  const SWIPE_TRIGGER = 56
+
+  const onRowTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0]
+    if (t) swipeStart.current = { x: t.clientX, y: t.clientY }
+  }
+  const onRowTouchMove = (e: React.TouchEvent, id: string, isDeleted: boolean) => {
+    if (!swipeStart.current || isDeleted) return
+    const t = e.touches[0]
+    const dx = t.clientX - swipeStart.current.x
+    const dy = t.clientY - swipeStart.current.y
+    // Right-swipe only, and only when clearly horizontal (don't fight vertical scroll).
+    if (dx > 8 && Math.abs(dx) > Math.abs(dy) + 4) {
+      setSwipe({ id, dx: Math.min(dx, 88) })
+    }
+  }
+  const onRowTouchEnd = (message: Message) => {
+    if (swipe && swipe.id === message.id && swipe.dx >= SWIPE_TRIGGER) {
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(12)
+      onReply(message)
+    }
+    setSwipe(null)
+    swipeStart.current = null
+  }
 
   useEffect(() => {
-    if (!contextMenu) return
-    const close = () => setContextMenu(null)
+    if (!contextMenu && !reactionBar) return
+    const close = () => { setContextMenu(null); setReactionBar(null) }
     window.addEventListener('click', close)
     window.addEventListener('scroll', close, true)
     window.addEventListener('keydown', close)
@@ -185,7 +219,32 @@ export function MessageList({
       window.removeEventListener('scroll', close, true)
       window.removeEventListener('keydown', close)
     }
-  }, [contextMenu])
+  }, [contextMenu, reactionBar])
+
+  const openReactionBar = (message: Message, isMine: boolean, isStarred: boolean, x: number, y: number) => {
+    if (message.id.startsWith('pending-')) return
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate?.(10)
+    setReactionBar({
+      x: Math.max(8, Math.min(x - 130, window.innerWidth - 268)),
+      y: Math.max(8, y - 56),
+      message, isMine, isStarred,
+    })
+  }
+
+  const startLongPress = (e: React.TouchEvent, message: Message, isMine: boolean, isStarred: boolean) => {
+    const touch = e.touches[0]
+    if (!touch) return
+    const x = touch.clientX
+    const y = touch.clientY
+    longPressTimer.current = window.setTimeout(() => {
+      suppressContext.current = true // stop the browser's contextmenu that follows a long-press
+      openReactionBar(message, isMine, isStarred, x, y)
+    }, 420)
+  }
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null }
+  }
 
   return (
     <div className="chat-timeline flex flex-col gap-2 w-full">
@@ -211,16 +270,34 @@ export function MessageList({
         const reply = msg.reply_to ? messageById.get(msg.reply_to) : null
         const groups = reactionGroups.get(msg.id) ?? []
         const isStarred = starredIds.includes(msg.id)
+        const isDeleted = !!msg.deleted_at
 
         return (
           <div
             key={msg.id}
             id={`message-${msg.id}`}
+            data-ts={msg.created_at}
+            onTouchStart={onRowTouchStart}
+            onTouchMove={(e) => onRowTouchMove(e, msg.id, isDeleted)}
+            onTouchEnd={() => onRowTouchEnd(msg)}
+            style={{
+              transform: swipe?.id === msg.id ? `translateX(${swipe.dx}px)` : undefined,
+              transition: swipe?.id === msg.id ? 'none' : 'transform 160ms ease-out',
+            }}
             className={cn(
-              "chat-message-row flex w-full gap-3 py-1 animate-message-in",
+              "chat-message-row relative flex w-full gap-3 py-1 animate-message-in",
               isMine ? "flex-row-reverse" : "flex-row"
             )}
           >
+            {/* Swipe-to-reply hint */}
+            {swipe?.id === msg.id && swipe.dx > 12 && (
+              <span
+                className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-primary"
+                style={{ opacity: Math.min(1, swipe.dx / SWIPE_TRIGGER) }}
+              >
+                <Reply className="h-4 w-4" />
+              </span>
+            )}
             {/* Avatar on Left (for others) */}
             {!isMine && (
               <div className="w-8 shrink-0">
@@ -243,7 +320,10 @@ export function MessageList({
               <div
                 onContextMenu={(event) => {
                   event.preventDefault()
-                  if (isPending) return
+                  // A long-press already fired the reactions bar — ignore the
+                  // browser's synthetic contextmenu that follows it on touch.
+                  if (suppressContext.current) { suppressContext.current = false; return }
+                  if (isPending || isDeleted) return
                   const bubbleRect = event.currentTarget.getBoundingClientRect()
                   setContextMenu({
                     x: Math.max(8, Math.min(bubbleRect.right - 224, window.innerWidth - 260)),
@@ -253,6 +333,10 @@ export function MessageList({
                     isStarred,
                   })
                 }}
+                onTouchStart={(event) => { if (!isDeleted) startLongPress(event, msg, isMine, isStarred) }}
+                onTouchEnd={cancelLongPress}
+                onTouchMove={cancelLongPress}
+                onTouchCancel={cancelLongPress}
                 className={cn(
                   'group/message relative overflow-hidden px-3 pb-1.5 pt-2 shadow-sm border transition-all duration-200',
                   isMine
@@ -270,7 +354,14 @@ export function MessageList({
                   </div>
                 )}
 
-                {reply && (
+                {isDeleted && (
+                  <p className={cn('flex items-center gap-1.5 text-[13px] italic', isMine ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                    <Ban className="h-3.5 w-3.5 shrink-0" />
+                    This message was deleted
+                  </p>
+                )}
+
+                {reply && !isDeleted && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -329,7 +420,7 @@ export function MessageList({
                   )}
                 </div>
 
-                {!isPending && (
+                {!isPending && !isDeleted && (
                   <button
                     onClick={(event) => {
                       event.stopPropagation()
@@ -353,7 +444,7 @@ export function MessageList({
                 )}
               </div>
 
-              {groups.length > 0 && (
+              {groups.length > 0 && !isDeleted && (
                 <div className={cn("mt-1 flex flex-wrap gap-1", isMine && "flex-row-reverse")}>
                   {groups.map((group) => (
                     <button
@@ -406,6 +497,32 @@ export function MessageList({
           onReact={onReact}
           onReport={onReport}
         />
+      )}
+      {reactionBar && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed z-[80] flex items-center gap-1 rounded-full border bg-popover p-1 shadow-md animate-in fade-in zoom-in-95 duration-100"
+          style={{ left: reactionBar.x, top: reactionBar.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {longPressReactions.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => { onReact(reactionBar.message.id, emoji); setReactionBar(null) }}
+              className="interactive-control flex h-9 w-9 items-center justify-center rounded-full text-xl hover:bg-accent active:scale-90"
+              title={`React ${emoji}`}
+            >
+              {emoji}
+            </button>
+          ))}
+          <button
+            onClick={() => { setContextMenu({ ...reactionBar }); setReactionBar(null) }}
+            className="interactive-control flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="More"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+        </div>,
+        document.body
       )}
     </div>
   )
