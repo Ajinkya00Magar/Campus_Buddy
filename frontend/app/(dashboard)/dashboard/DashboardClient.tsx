@@ -175,7 +175,7 @@ export default function DashboardClient({
             <ActionButton 
               icon={Compass} 
               label="Explore Campus" 
-              desc="View map and locations" 
+              desc="Facilities, map & contacts" 
               href="/campus" 
               delay={0.25} 
             />

@@ -70,7 +70,7 @@ export function useMessages(channelId: string) {
         async (payload) => {
           const { data } = await supabase
             .from('messages')
-            .select('*, users(name, avatar_url, role)')
+            .select('*, users:users!messages_sender_id_fkey(name, avatar_url, role)')
             .eq('id', payload.new.id)
             .single()
           if (data) {

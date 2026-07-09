@@ -36,7 +36,7 @@ export async function getMessages(
   const limit = opts.limit ?? MESSAGE_PAGE_SIZE
   let query = supabase
     .from('messages')
-    .select('*, users(name, avatar_url, role)')
+    .select('*, users:users!messages_sender_id_fkey(name, avatar_url, role)')
     .eq('channel_id', channelId)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -59,7 +59,7 @@ export async function sendMessage(payload: {
   const { data, error } = await supabase
     .from('messages')
     .insert(payload)
-    .select('*, users(name, avatar_url, role)')
+    .select('*, users:users!messages_sender_id_fkey(name, avatar_url, role)')
     .single()
 
   if (data && payload.content) {
@@ -131,7 +131,7 @@ export async function updateMessage(messageId: string, content: string) {
     .from('messages')
     .update({ content, edited_at: new Date().toISOString() })
     .eq('id', messageId)
-    .select('*, users(name, avatar_url, role)')
+    .select('*, users:users!messages_sender_id_fkey(name, avatar_url, role)')
     .single()
   return { data, error }
 }

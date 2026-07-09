@@ -12,7 +12,7 @@ import { isYearNoticeChannel, shouldShowChannelInSidebar, YEAR_LABELS, YEAR_VALU
 import {
   LayoutDashboard, Calendar, Users2, BookOpen,
   Hash, Bell, Settings, GraduationCap, Shield, ChevronLeft, ChevronRight,
-  Lock, ChevronDown, FileText, Archive
+  Lock, ChevronDown, FileText, Archive, MapPin
 } from 'lucide-react'
 import type { UserRole, Channel } from '@/types'
 
@@ -22,6 +22,7 @@ const navItems = [
   { href: '/events',        label: 'Events',        icon: Calendar },
   { href: '/clubs',         label: 'Clubs',         icon: Users2 },
   { href: '/courses',       label: 'Courses',       icon: BookOpen },
+  { href: '/campus',        label: 'Campus',        icon: MapPin },
   { href: '/pyqs',  label: 'PYQs',  icon: Archive },
   { href: '/notes', label: 'Notes', icon: FileText },
   { href: '/notifications', label: 'Notifications', icon: Bell },

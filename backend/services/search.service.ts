@@ -42,7 +42,7 @@ export async function searchAll(query: string): Promise<SearchResults> {
     supabase.from('channels').select('*').ilike('description', like).limit(8),
     supabase
       .from('messages')
-      .select('*, users(name, avatar_url, role), channels(id, name)')
+      .select('*, users:users!messages_sender_id_fkey(name, avatar_url, role), channels(id, name)')
       .ilike('content', like)
       .order('created_at', { ascending: false })
       .limit(12),

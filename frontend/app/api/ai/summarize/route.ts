@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   // RLS scopes this read to channels the caller may access — no cross-year leakage.
   const { data: msgs } = await supabase
     .from('messages')
-    .select('content, created_at, users(name)')
+    .select('content, created_at, users:users!messages_sender_id_fkey(name)')
     .eq('channel_id', channelId)
     .is('deleted_at', null)
     .not('content', 'is', null)
