@@ -231,6 +231,61 @@ export default function ChannelPageClient({
   const [hiddenIds, setHiddenIds] = useState<string[]>([])
   const [deleteTarget, setDeleteTarget] = useState<Message | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [showContactPicker, setShowContactPicker] = useState(false)
+  const [contactSearchQuery, setContactSearchQuery] = useState('')
+  const [contactSearchResults, setContactSearchResults] = useState<any[]>([])
+  const [isSearchingContacts, setIsSearchingContacts] = useState(false)
+  const [showEventPicker, setShowEventPicker] = useState(false)
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([])
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false)
+
+  useEffect(() => {
+    if (showEventPicker && upcomingEvents.length === 0) {
+      const fetchEvents = async () => {
+        setIsLoadingEvents(true)
+        const { data } = await supabase.from('events').select('*').gte('start_date', new Date().toISOString()).order('start_date', { ascending: true }).limit(20)
+        if (data) setUpcomingEvents(data)
+        setIsLoadingEvents(false)
+      }
+      fetchEvents()
+    }
+  }, [showEventPicker, upcomingEvents.length, supabase])
+
+  useEffect(() => {
+    if (!showContactPicker || !contactSearchQuery.trim()) {
+      setContactSearchResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      setIsSearchingContacts(true)
+      const q = `%${contactSearchQuery.trim().replace(/[%_\\]/g, '\\$&')}%`
+      const { data } = await supabase.from('users').select('id, name, email, role, avatar_url').ilike('name', q).limit(10)
+      if (data) setContactSearchResults(data)
+      setIsSearchingContacts(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [contactSearchQuery, showContactPicker, supabase])
+
+  const handleShareContact = async (user: any) => {
+    setShowContactPicker(false)
+    setContactSearchQuery('')
+    if (currentUser) {
+      setSending(true)
+      const payload = `[Contact:${user.id}|${user.name}|${user.email || ''}|${user.role || 'student'}|${user.avatar_url || ''}]`
+      await sendMessage({ channel_id: channel.id, sender_id: currentUser.id, content: payload })
+      setSending(false)
+    }
+  }
+
+  const handleShareEvent = async (event: any) => {
+    setShowEventPicker(false)
+    if (currentUser) {
+      setSending(true)
+      const payload = `[Event:${event.id}|${event.title}|${event.start_date}|${event.location || ''}]`
+      await sendMessage({ channel_id: channel.id, sender_id: currentUser.id, content: payload })
+      setSending(false)
+    }
+  }
 
   const documentRef = useRef<HTMLInputElement>(null)
   const mediaRef = useRef<HTMLInputElement>(null)
@@ -1199,7 +1254,7 @@ export default function ChannelPageClient({
               <div className="flex items-end gap-1.5 border bg-background p-1.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/20">
                 <input ref={documentRef} type="file" className="hidden" onChange={handleFile} />
                 <input ref={mediaRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFile} />
-                <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
+                <input ref={cameraRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
                 <input ref={audioRef} type="file" accept="audio/*" className="hidden" onChange={handleFile} />
                 <PlusAttachmentMenu
                   disabled={uploading || recording}
@@ -1207,9 +1262,9 @@ export default function ChannelPageClient({
                   onMedia={() => mediaRef.current?.click()}
                   onCamera={() => cameraRef.current?.click()}
                   onAudio={() => audioRef.current?.click()}
-                  onContact={() => handleUnavailableTool('Contact sharing')}
+                  onContact={() => setShowContactPicker(true)}
                   onPoll={() => setShowPollForm(true)}
-                  onEvent={() => handleUnavailableTool('Event sharing')}
+                  onEvent={() => setShowEventPicker(true)}
                   onSticker={() => handleUnavailableTool('Stickers')}
                 />
                 <EmojiPaletteMenu onSelect={handleEmojiInsert} />
@@ -1361,6 +1416,80 @@ export default function ChannelPageClient({
                 {reporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flag className="h-4 w-4" />}
                 Submit report
               </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showContactPicker} onOpenChange={setShowContactPicker}>
+          <DialogContent className="max-w-md bg-card">
+            <DialogHeader>
+              <DialogTitle>Share Contact</DialogTitle>
+              <DialogDescription>Search for a user to share their contact card.</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-4 py-2">
+              <Input
+                placeholder="Search by name..."
+                value={contactSearchQuery}
+                onChange={(e) => setContactSearchQuery(e.target.value)}
+                autoFocus
+              />
+              <div className="flex flex-col gap-1 max-h-[300px] overflow-y-auto">
+                {isSearchingContacts ? (
+                  <div className="py-4 text-center text-sm text-muted-foreground">Searching...</div>
+                ) : contactSearchResults.length > 0 ? (
+                  contactSearchResults.map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleShareContact(user)}
+                      className="flex items-center gap-3 rounded-md p-2 text-left hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar_url || ''} />
+                        <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{user.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold opacity-60">
+                        {user.role}
+                      </span>
+                    </button>
+                  ))
+                ) : contactSearchQuery.trim() ? (
+                  <div className="py-4 text-center text-sm text-muted-foreground">No users found</div>
+                ) : null}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showEventPicker} onOpenChange={setShowEventPicker}>
+          <DialogContent className="max-w-md bg-card">
+            <DialogHeader>
+              <DialogTitle>Share Event</DialogTitle>
+              <DialogDescription>Select an upcoming event to share.</DialogDescription>
+            </DialogHeader>
+            <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto py-2 custom-scrollbar">
+              {isLoadingEvents ? (
+                <div className="py-4 text-center text-sm text-muted-foreground">Loading events...</div>
+              ) : upcomingEvents.length > 0 ? (
+                upcomingEvents.map((event) => (
+                  <button
+                    key={event.id}
+                    onClick={() => handleShareEvent(event)}
+                    className="flex flex-col gap-1 rounded-md border p-3 text-left hover:border-primary/50 hover:bg-accent/50 transition-colors"
+                  >
+                    <p className="font-medium">{event.title}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {new Date(event.start_date).toLocaleDateString()}</span>
+                      {event.location && <span className="truncate">{event.location}</span>}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="py-4 text-center text-sm text-muted-foreground">No upcoming events found</div>
+              )}
             </div>
           </DialogContent>
         </Dialog>

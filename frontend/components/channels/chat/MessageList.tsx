@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   File as FileIcon, Images, Camera, Headphones, Contact, BarChart2, CalendarDays, SmilePlus, Plus,
-  Star, Pin, Loader2, ChevronDown, Ban, Reply
+  Star, Pin, Loader2, ChevronDown, Ban, Reply, Clock, MapPin
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -40,6 +40,51 @@ const emojiPalette = [
     emojis: ['❤️', '🔥', '⭐', '✨', '💯', '⚠️', '❓', '❗', '➕', '➡️', '🔔', '📎'],
   },
 ]
+
+function renderMessageContent(content: string, isMine: boolean) {
+  if (!content) return null
+
+  const contactMatch = content.match(/^\[Contact:(.*?)\|(.*?)\|(.*?)\|(.*?)\|(.*?)\]$/)
+  if (contactMatch) {
+    const [_, id, name, email, role, avatar] = contactMatch
+    return (
+      <div className={cn("mt-1 mb-1 p-2.5 rounded-md border flex items-center gap-3", isMine ? "bg-primary/5 border-primary/20" : "bg-card")}>
+        <Avatar className="h-9 w-9">
+          <AvatarImage src={avatar} />
+          <AvatarFallback>{name.substring(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0 pr-2">
+          <p className={cn("font-semibold text-sm truncate", isMine ? "text-primary-foreground" : "text-foreground")}>{name}</p>
+          {email && <p className={cn("text-xs truncate", isMine ? "text-primary-foreground/70" : "text-muted-foreground")}>{email}</p>}
+        </div>
+        <span className={cn("text-[9px] uppercase font-bold tracking-wider opacity-80 px-2 py-0.5 rounded-sm shrink-0", isMine ? "bg-primary/20 text-primary-foreground" : "bg-muted text-muted-foreground")}>{role}</span>
+      </div>
+    )
+  }
+
+  const eventMatch = content.match(/^\[Event:(.*?)\|(.*?)\|(.*?)\|(.*?)\]$/)
+  if (eventMatch) {
+    const [_, id, title, dateStr, location] = eventMatch
+    return (
+      <div className={cn("mt-1 mb-1 p-3 rounded-md border flex flex-col gap-1.5", isMine ? "bg-primary/5 border-primary/20" : "bg-card")}>
+        <div className="flex items-start justify-between gap-4">
+          <p className={cn("font-semibold text-sm", isMine ? "text-primary-foreground" : "text-foreground")}>{title}</p>
+          <CalendarDays className={cn("h-4 w-4 shrink-0", isMine ? "text-primary-foreground/70" : "text-primary")} />
+        </div>
+        <div className={cn("flex items-center gap-3 text-xs mt-1", isMine ? "text-primary-foreground/70" : "text-muted-foreground")}>
+          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {new Date(dateStr).toLocaleDateString()}</span>
+          {location && <span className="flex items-center gap-1 truncate"><MapPin className="h-3 w-3" /> {location}</span>}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <p className={cn("whitespace-pre-wrap break-words text-[14px] leading-relaxed pr-8 font-medium", isMine ? "text-primary-foreground" : "text-foreground")}>
+      {content}
+    </p>
+  )
+}
 
 export function PlusAttachmentMenu({
   disabled,
@@ -381,11 +426,7 @@ export function MessageList({
                   </button>
                 )}
 
-                {msg.content && (
-                  <p className="whitespace-pre-wrap break-words text-[14px] leading-relaxed pr-8 font-medium">
-                    {msg.content}
-                  </p>
-                )}
+                {msg.content && renderMessageContent(msg.content, isMine)}
 
                 {msg.file_url && (
                   <div className="mt-1.5 mb-1.5">

@@ -6,7 +6,7 @@
  *   AI_PROVIDER = anthropic | openai | gemini   (default: anthropic)
  *   ANTHROPIC_API_KEY=...            ANTHROPIC_MODEL=claude-sonnet-5 (optional)
  *   OPENAI_API_KEY=...               OPENAI_MODEL=gpt-4o-mini (optional)
- *   GEMINI_API_KEY=...               GEMINI_MODEL=gemini-1.5-flash (optional)
+ *   GEMINI_API_KEY=...               GEMINI_MODEL=gemini-2.5-flash (optional)
  */
 
 export type AiProvider = 'anthropic' | 'openai' | 'gemini'
@@ -82,7 +82,7 @@ export async function aiComplete({ system, prompt, maxTokens = 600, temperature 
   }
 
   // gemini
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
     {
