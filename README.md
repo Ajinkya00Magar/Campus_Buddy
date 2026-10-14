@@ -272,6 +272,6 @@ without the write amplification at scale.)_
 
 **Built with ❤️ for MIT Academy of Engineering**
 
-_Preserve what's good, harden what's weak, ship what students actually use._
+_Preserve what's good, harden what's weak, ship what students actually use
 
 </div>
