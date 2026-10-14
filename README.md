@@ -22,7 +22,7 @@ _WhatsApp-grade chat · Discord-style channels · Slack-level admin — built fo
 Scattered WhatsApp groups, lost PDFs, "which year's notice was that?" — Campus Buddy replaces all of it
 with **one place** where students, CRs, professors, and admins meet in real time. Every student sees
 exactly the channels for **their department and academic year** — no more, no less — and that boundary is
-enforced **in the database**, not just hidden in the UI.
+enforced **in the database** not just hidden in the UI.
 
 > **The one-line pitch:** a communication platform that _feels_ like WhatsApp, is _organized_ like Discord,
 > and is _governed_ like Slack — scoped to a single campus and locked down at every layer.
